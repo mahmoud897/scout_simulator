@@ -557,11 +557,42 @@
             }
           }
         }
-      });
+    // Normalizes between legacy verbose JSON and Version 2 ultra-compact array format
+    function normalizeModelData(data) {
+      if (!data) return { spars: [] };
+      if (data.v === 2 && data.s) {
+        const LASHING_TYPES = ['square', 'diagonal', 'shear', 'figure8'];
+        const spars = (data.s || []).map((item, idx) => ({
+          id: 's_' + idx,
+          radius: item[0],
+          length: item[1],
+          position: { x: item[2][0], y: item[2][1], z: item[2][2] },
+          quaternion: { x: item[3][0], y: item[3][1], z: item[3][2], w: item[3][3] }
+        }));
+        const lashings = (data.l || []).map((item, idx) => ({
+          id: 'l_' + idx,
+          type: LASHING_TYPES[item[0]] || 'square',
+          position: { x: item[1][0], y: item[1][1], z: item[1][2] }
+        }));
+        const stakes = (data.st || []).map((item, idx) => ({
+          id: 'st_' + idx,
+          position: { x: item[0][0], y: item[0][1], z: item[0][2] },
+          quaternion: { x: item[1][0], y: item[1][1], z: item[1][2], w: item[1][3] }
+        }));
+        const guyLines = (data.g || []).map((item, idx) => ({
+          id: 'g_' + idx,
+          sparId: 's_' + item[0],
+          stakeId: 'st_' + item[1],
+          sparHeightOffset: item[2]
+        }));
+        return { title: data.t, spars, lashings, stakes, guyLines };
+      }
+      return data;
     }
 
     // --- Build 3D Model from JSON Data ---
-    function buildModel(data) {
+    function buildModel(rawInput) {
+      const data = normalizeModelData(rawInput);
       currentModelData = data;
       // Clear old meshes
       while (modelGroup.children.length > 0) {
@@ -574,6 +605,10 @@
         return;
       }
       document.getElementById('empty-state-modal').classList.add('hidden');
+
+      if (data.title) {
+        document.getElementById('structure-title').textContent = data.title;
+      }
 
       // 1. Build Spars (Wood Logs)
       const sparMaterials = [

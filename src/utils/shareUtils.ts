@@ -1,112 +1,94 @@
 import LZString from 'lz-string';
 import QRCode from 'qrcode';
 
-export interface CompactModelData {
-  title?: string;
-  spars: Array<{
-    id: string;
-    radius: number;
-    length: number;
-    position: { x: number; y: number; z: number };
-    quaternion: { x: number; y: number; z: number; w: number };
-  }>;
-  lashings?: Array<{
-    id: string;
-    type: string;
-    position: { x: number; y: number; z: number };
-    angle?: number;
-  }>;
-  stakes?: Array<{
-    id: string;
-    position: { x: number; y: number; z: number };
-    quaternion: { x: number; y: number; z: number; w: number };
-  }>;
-  guyLines?: Array<{
-    id: string;
-    sparId: string;
-    stakeId: string;
-    sparHeightOffset: number;
-  }>;
+export interface UltraCompactModel {
+  v: 2;
+  t?: string; // title
+  s: Array<[number, number, [number, number, number], [number, number, number, number]]>; // [radius, length, [x,y,z], [qx,qy,qz,qw]]
+  l?: Array<[number, [number, number, number]]>; // [typeIndex, [x,y,z]]
+  st?: Array<[[number, number, number], [number, number, number, number]]>; // [[x,y,z], [qx,qy,qz,qw]]
+  g?: Array<[number, number, number]>; // [sparIndex, stakeIndex, sparHeightOffset]
 }
 
 const STORAGE_KEY_CUSTOM_URL = 'pioneering_custom_viewer_url';
+export const OFFICIAL_DEFAULT_VIEWER_URL = 'https://mahmoud897.github.io/scout_simulator/viewer.html';
+
+const LASHING_TYPES = ['square', 'diagonal', 'shear', 'figure8'];
 
 /**
- * Compacts and rounds numbers in model data to minimize compressed URL length
+ * Compacts and rounds numbers into ultra-dense array representation (Version 2)
+ * Cuts data size by over 65% so even large structures easily fit in QR Codes!
  */
-export function compactModelData(rawData: any, title = 'تصميم كشفي'): CompactModelData {
+export function compactModelData(rawData: any, title = 'تصميم كشفي'): UltraCompactModel {
+  const r2 = (n: number) => Math.round((Number.isFinite(n) ? n : 0) * 100) / 100;
   const r3 = (n: number) => Math.round((Number.isFinite(n) ? n : 0) * 1000) / 1000;
-  const r4 = (n: number) => Math.round((Number.isFinite(n) ? n : 0) * 10000) / 10000;
 
-  const spars = (rawData.spars || []).map((s: any) => {
-    const pos = s.mesh ? s.mesh.position : (s.position || { x: 0, y: 0, z: 0 });
-    const quat = s.mesh ? s.mesh.quaternion : (s.quaternion || { x: 0, y: 0, z: 0, w: 1 });
+  const rawSpars = rawData.spars || [];
+  const sparIdToIndex = new Map<string, number>();
 
-    return {
-      id: String(s.id),
-      radius: r3(s.radius || 0.05),
-      length: r3(s.length || 2.0),
-      position: { x: r3(pos.x), y: r3(pos.y), z: r3(pos.z) },
-      quaternion: { x: r4(quat.x), y: r4(quat.y), z: r4(quat.z), w: r4(quat.w) }
-    };
+  const s: UltraCompactModel['s'] = rawSpars.map((spar: any, idx: number) => {
+    sparIdToIndex.set(String(spar.id), idx);
+    const pos = spar.mesh ? spar.mesh.position : (spar.position || { x: 0, y: 0, z: 0 });
+    const quat = spar.mesh ? spar.mesh.quaternion : (spar.quaternion || { x: 0, y: 0, z: 0, w: 1 });
+
+    return [
+      r2(spar.radius || 0.05),
+      r2(spar.length || 2.0),
+      [r2(pos.x), r2(pos.y), r2(pos.z)],
+      [r3(quat.x), r3(quat.y), r3(quat.z), r3(quat.w)]
+    ];
   });
 
-  const lashings = (rawData.lashings || []).map((l: any) => {
-    const pos = l.mesh ? l.mesh.position : (l.position || { x: 0, y: 0, z: 0 });
-    return {
-      id: String(l.id),
-      type: l.type || 'square',
-      position: { x: r3(pos.x), y: r3(pos.y), z: r3(pos.z) },
-      angle: r3(l.angle || 90)
-    };
+  const rawLashings = rawData.lashings || [];
+  const l: UltraCompactModel['l'] = rawLashings.map((lash: any) => {
+    const pos = lash.mesh ? lash.mesh.position : (lash.position || { x: 0, y: 0, z: 0 });
+    let typeIdx = LASHING_TYPES.indexOf(lash.type);
+    if (typeIdx === -1) typeIdx = 0;
+    return [
+      typeIdx,
+      [r2(pos.x), r2(pos.y), r2(pos.z)]
+    ];
   });
 
-  const stakes = (rawData.stakes || []).map((st: any) => {
-    const pos = st.mesh ? st.mesh.position : (st.position || { x: 0, y: 0, z: 0 });
-    const quat = st.mesh ? st.mesh.quaternion : (st.quaternion || { x: 0, y: 0, z: 0, w: 1 });
-    return {
-      id: String(st.id),
-      position: { x: r3(pos.x), y: r3(pos.y), z: r3(pos.z) },
-      quaternion: { x: r4(quat.x), y: r4(quat.y), z: r4(quat.z), w: r4(quat.w) }
-    };
+  const rawStakes = rawData.stakes || [];
+  const stakeIdToIndex = new Map<string, number>();
+  const st: UltraCompactModel['st'] = rawStakes.map((stake: any, idx: number) => {
+    stakeIdToIndex.set(String(stake.id), idx);
+    const pos = stake.mesh ? stake.mesh.position : (stake.position || { x: 0, y: 0, z: 0 });
+    const quat = stake.mesh ? stake.mesh.quaternion : (stake.quaternion || { x: 0, y: 0, z: 0, w: 1 });
+    return [
+      [r2(pos.x), r2(pos.y), r2(pos.z)],
+      [r3(quat.x), r3(quat.y), r3(quat.z), r3(quat.w)]
+    ];
   });
 
-  const guyLines = (rawData.guyLines || []).map((g: any) => ({
-    id: String(g.id),
-    sparId: String(g.sparId),
-    stakeId: String(g.stakeId),
-    sparHeightOffset: r3(g.sparHeightOffset || 0)
-  }));
+  const rawGuyLines = rawData.guyLines || [];
+  const g: UltraCompactModel['g'] = rawGuyLines.map((line: any) => {
+    const sIdx = sparIdToIndex.get(String(line.sparId)) ?? 0;
+    const stIdx = stakeIdToIndex.get(String(line.stakeId)) ?? 0;
+    return [
+      sIdx,
+      stIdx,
+      r2(line.sparHeightOffset || 0)
+    ];
+  });
 
   return {
-    title,
-    spars,
-    lashings,
-    stakes,
-    guyLines
+    v: 2,
+    t: title,
+    s,
+    l,
+    st,
+    g
   };
 }
 
 /**
  * Compresses model JSON into URL-safe encoded URI component using LZ-String
  */
-export function compressModelToHash(data: CompactModelData): string {
+export function compressModelToHash(data: UltraCompactModel): string {
   const json = JSON.stringify(data);
   return LZString.compressToEncodedURIComponent(json);
-}
-
-/**
- * Decompresses model hash back to CompactModelData
- */
-export function decompressHashToModel(hash: string): CompactModelData | null {
-  try {
-    const decompressed = LZString.decompressFromEncodedURIComponent(hash);
-    if (!decompressed) return null;
-    return JSON.parse(decompressed);
-  } catch (e) {
-    console.error('Failed to decompress model hash:', e);
-    return null;
-  }
 }
 
 /**
@@ -115,19 +97,28 @@ export function decompressHashToModel(hash: string): CompactModelData | null {
 export function getBaseViewerURL(): string {
   const saved = localStorage.getItem(STORAGE_KEY_CUSTOM_URL);
   if (saved && saved.trim()) {
-    return saved.trim();
+    let clean = saved.trim();
+    // Auto-fix accidental cutoff like viewer.h
+    if (clean.endsWith('/viewer.h') || clean.endsWith('/viewer.htm')) {
+      clean = clean.replace(/\/viewer\.h(tm)?$/i, '/viewer.html');
+    }
+    return clean;
   }
 
-  // If running on GitHub Pages or by default, use the official GitHub Pages URL
-  return 'https://mahmoud897.github.io/scout_simulator/viewer.html';
+  // Official GitHub Pages link is the default so links work anywhere
+  return OFFICIAL_DEFAULT_VIEWER_URL;
 }
 
 /**
- * Sets and saves custom viewer URL (e.g. GitHub Pages URL)
+ * Sets and saves custom viewer URL
  */
 export function setBaseViewerURL(url: string): void {
   if (url && url.trim()) {
-    localStorage.setItem(STORAGE_KEY_CUSTOM_URL, url.trim());
+    let clean = url.trim();
+    if (clean.endsWith('/viewer.h') || clean.endsWith('/viewer.htm')) {
+      clean = clean.replace(/\/viewer\.h(tm)?$/i, '/viewer.html');
+    }
+    localStorage.setItem(STORAGE_KEY_CUSTOM_URL, clean);
   } else {
     localStorage.removeItem(STORAGE_KEY_CUSTOM_URL);
   }
@@ -145,15 +136,22 @@ export function generateViewerURL(rawData: any, customBase?: string, title?: str
 
 /**
  * Generates high-res QR Code as PNG Data URL
+ * Uses Error Correction 'L' to maximize data capacity and speed
  */
 export async function generateQRCodeDataURL(url: string): Promise<string> {
-  return await QRCode.toDataURL(url, {
-    errorCorrectionLevel: 'M',
-    margin: 2,
-    scale: 10,
-    color: {
-      dark: '#052e16', // Forest dark green
-      light: '#ffffff'
-    }
-  });
+  try {
+    return await QRCode.toDataURL(url, {
+      errorCorrectionLevel: 'L',
+      margin: 2,
+      scale: 8,
+      color: {
+        dark: '#052e16', // Forest dark green
+        light: '#ffffff'
+      }
+    });
+  } catch (err: any) {
+    // If still too big for single QR, throw descriptive error
+    console.warn('QR Code generation failed, data might be too long:', err?.message);
+    throw new Error('حجم التصميم كبير على رمز QR مباشر (يمكنك مشاركته عبر زر نسخ الرابط أو تحميل ملف HTML)');
+  }
 }

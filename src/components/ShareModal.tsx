@@ -22,6 +22,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
 
   const [copied, setCopied] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
+  const [qrError, setQrError] = useState<string | null>(null);
   const [customBaseUrl, setCustomBaseUrl] = useState<string>(getBaseViewerURL());
   const [showSettings, setShowSettings] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -48,12 +49,16 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
       .then(url => {
         if (active) {
           setQrDataUrl(url);
+          setQrError(null);
           setLoading(false);
         }
       })
       .catch(err => {
-        console.error('Failed to generate QR Code:', err);
-        if (active) setLoading(false);
+        if (active) {
+          setQrDataUrl('');
+          setQrError(err?.message || 'حجم التصميم كبير على رمز QR مباشر (يمكنك مشاركته عبر زر نسخ الرابط)');
+          setLoading(false);
+        }
       });
 
     return () => { active = false; };
@@ -114,11 +119,14 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
       alert('تعذر توليد ملف الـ HTML المستقل');
     }
   };
-
-  // Save Custom Base URL
+  // Save Custom Base URL with auto-correction
   const handleSaveBaseUrl = (newUrl: string) => {
-    setCustomBaseUrl(newUrl);
-    setBaseViewerURL(newUrl);
+    let clean = newUrl.trim();
+    if (clean.endsWith('/viewer.h') || clean.endsWith('/viewer.htm')) {
+      clean = clean.replace(/\/viewer\.h(tm)?$/i, '/viewer.html');
+    }
+    setCustomBaseUrl(clean);
+    setBaseViewerURL(clean);
   };
 
   if (!isOpen) return null;
@@ -170,7 +178,9 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
                 className="w-44 h-44 sm:w-48 sm:h-48 object-contain rounded-lg"
               />
             ) : (
-              <div className="text-xs text-status-error">فشل توليد رمز الـ QR</div>
+              <div className="text-xs text-amber-700 bg-amber-50 rounded-xl p-3 max-w-[210px] leading-relaxed text-center font-sans font-medium border border-amber-200">
+                ⚠️ {qrError || 'حجم التصميم كبير على رمز QR مباشر. يمكنك مشاركته فوراً عبر زر "نسخ الرابط" في الأسفل.'}
+              </div>
             )}
           </div>
 
