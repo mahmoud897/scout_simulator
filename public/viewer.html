@@ -142,10 +142,10 @@
         <span class="hidden sm:inline">أرض كشفية</span>
       </button>
 
-      <!-- Ground Switcher: White Studio -->
-      <button data-env="studio" class="env-btn px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all text-slate-300 hover:text-white hover:bg-slate-800/60 border border-transparent" title="استوديو ناصع فوتوغرافي لإبراز التفاصيل">
+      <!-- Ground Switcher: Studio -->
+      <button data-env="studio" class="env-btn px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all text-slate-300 hover:text-white hover:bg-slate-800/60 border border-transparent" title="استوديو فوتوغرافي متوازن ومريح للعين لإبراز التفاصيل">
         <span>🏛️</span>
-        <span class="hidden sm:inline">استوديو أبيض</span>
+        <span class="hidden sm:inline">استوديو احترافي</span>
       </button>
 
       <!-- Ground Switcher: Dark Showcase -->
@@ -266,7 +266,9 @@
 
     // --- State Variables ---
     let scene, camera, renderer, controls;
-    let groundMesh, dirLight, hemiLight, ambientLight;
+    let groundMesh, dirLight, hemiLight, ambientLight, rimLight;
+    let studioGrid, studioRingMesh;
+    let grassGroundMat, studioShadowMat, darkGroundMat, blueprintGroundMat;
     let modelGroup;
     let autoRotate = false;
     let currentEnv = 'grass'; // 'grass' | 'studio' | 'dark' | 'blueprint'
@@ -343,9 +345,9 @@
       const ctx = canvas.getContext('2d');
       if (!ctx) return new THREE.Texture();
 
-      ctx.fillStyle = '#d2b48c';
+      ctx.fillStyle = '#c6975d';
       ctx.fillRect(0, 0, 64, 64);
-      ctx.fillStyle = 'rgba(101, 74, 43, 0.3)';
+      ctx.fillStyle = 'rgba(74, 45, 18, 0.4)';
       for (let x = -64; x < 128; x += 8) {
         ctx.beginPath();
         ctx.moveTo(x, 0);
@@ -362,9 +364,30 @@
       return tex;
     }
 
+    function createStudioBackgroundTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512; canvas.height = 512;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return null;
+
+      // Soft architectural studio vignette: gentle warm pearl center fading smoothly to silver-slate
+      const grad = ctx.createRadialGradient(256, 220, 20, 256, 256, 380);
+      grad.addColorStop(0, '#e5e9ee');
+      grad.addColorStop(0.45, '#d6dbe2');
+      grad.addColorStop(0.8, '#c2c9d2');
+      grad.addColorStop(1, '#aeb7c2');
+
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 512, 512);
+
+      const tex = new THREE.CanvasTexture(canvas);
+      return tex;
+    }
+
     const barkTexture = createWoodBarkTexture();
     const ringsTexture = createWoodRingsTexture();
     const ropeTexture = createRopeTexture();
+    const studioBgTexture = createStudioBackgroundTexture();
 
     // --- Initialize Three.js Scene ---
     function init() {
@@ -387,6 +410,8 @@
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.02;
       container.appendChild(renderer.domElement);
 
       // Controls
@@ -397,7 +422,7 @@
       controls.minDistance = 1;
       controls.maxDistance = 80;
 
-      // Lights
+      // Lights Setup
       ambientLight = new THREE.AmbientLight('#ffffff', 0.65);
       scene.add(ambientLight);
 
@@ -411,23 +436,60 @@
       dirLight.shadow.mapSize.width = 2048;
       dirLight.shadow.mapSize.height = 2048;
       dirLight.shadow.bias = -0.0004;
-      dirLight.shadow.camera.left = -15;
-      dirLight.shadow.camera.right = 15;
-      dirLight.shadow.camera.top = 15;
-      dirLight.shadow.camera.bottom = -15;
+      dirLight.shadow.camera.left = -20;
+      dirLight.shadow.camera.right = 20;
+      dirLight.shadow.camera.top = 20;
+      dirLight.shadow.camera.bottom = -20;
       scene.add(dirLight);
 
-      // Ground Plane
-      const groundGeo = new THREE.PlaneGeometry(120, 120);
-      const groundMat = new THREE.MeshStandardMaterial({
+      // Back / Rim Light for 3D edge separation and high contrast
+      rimLight = new THREE.DirectionalLight('#ffffff', 0);
+      rimLight.position.set(-14, 18, -14);
+      scene.add(rimLight);
+
+      // Ground Materials
+      grassGroundMat = new THREE.MeshStandardMaterial({
         color: '#14211a',
         roughness: 0.9,
         metalness: 0.02
       });
-      groundMesh = new THREE.Mesh(groundGeo, groundMat);
+      studioShadowMat = new THREE.ShadowMaterial({
+        opacity: 0.28
+      });
+      darkGroundMat = new THREE.MeshStandardMaterial({
+        color: '#0f172a',
+        roughness: 0.7,
+        metalness: 0.1
+      });
+      blueprintGroundMat = new THREE.MeshStandardMaterial({
+        color: '#0c1e35',
+        roughness: 0.9,
+        metalness: 0.01
+      });
+
+      // Ground Plane - Large shadow receiver
+      const groundGeo = new THREE.PlaneGeometry(300, 300);
+      groundMesh = new THREE.Mesh(groundGeo, grassGroundMat);
       groundMesh.rotation.x = -Math.PI / 2;
       groundMesh.receiveShadow = true;
       scene.add(groundMesh);
+
+      // Studio Architectural Ground Grid
+      studioGrid = new THREE.GridHelper(36, 36, '#8fa0b5', '#cbd5e1');
+      studioGrid.position.y = 0.001;
+      studioGrid.material.transparent = true;
+      studioGrid.material.opacity = 0.4;
+      studioGrid.visible = false;
+      scene.add(studioGrid);
+
+      // Studio Circular Exhibition Platform Ring
+      const studioRingGeo = new THREE.RingGeometry(17.9, 18.0, 64);
+      const studioRingMat = new THREE.MeshBasicMaterial({ color: '#94a3b8', side: THREE.DoubleSide, transparent: true, opacity: 0.35 });
+      studioRingMesh = new THREE.Mesh(studioRingGeo, studioRingMat);
+      studioRingMesh.rotation.x = -Math.PI / 2;
+      studioRingMesh.position.y = 0.002;
+      studioRingMesh.visible = false;
+      scene.add(studioRingMesh);
 
       // Model Group
       modelGroup = new THREE.Group();
@@ -466,10 +528,11 @@
         // Natural Camp Ground
         scene.background = new THREE.Color('#0c1219');
         scene.fog = new THREE.FogExp2('#0c1219', 0.018);
-        groundMesh.material.color.set('#14211a');
-        groundMesh.material.roughness = 0.9;
+        groundMesh.material = grassGroundMat;
         groundMesh.visible = true;
         groundMesh.receiveShadow = true;
+        if (studioGrid) studioGrid.visible = false;
+        if (studioRingMesh) studioRingMesh.visible = false;
 
         ambientLight.color.set('#ffffff');
         ambientLight.intensity = 0.65;
@@ -479,27 +542,43 @@
         dirLight.visible = true;
         dirLight.color.set('#fffbeb');
         dirLight.intensity = 1.4;
+        dirLight.position.set(14, 24, 10);
+        if (rimLight) rimLight.intensity = 0;
 
         updateModelMaterials(false);
 
       } else if (env === 'studio') {
-        // Clean White Studio Showcase
-        scene.background = new THREE.Color('#f8fafc');
-        scene.fog = new THREE.FogExp2('#f8fafc', 0.012);
-        groundMesh.material.color.set('#ffffff');
-        groundMesh.material.roughness = 0.85;
-        groundMesh.material.metalness = 0.01;
+        // Balanced High-Contrast Architectural Studio
+        scene.background = studioBgTexture || new THREE.Color('#dce2e8');
+        scene.fog = null; // Infinite seamless look without ugly horizon clipping
+        groundMesh.material = studioShadowMat;
         groundMesh.visible = true;
         groundMesh.receiveShadow = true;
+        if (studioGrid) studioGrid.visible = true;
+        if (studioRingMesh) studioRingMesh.visible = true;
 
-        ambientLight.color.set('#ffffff');
-        ambientLight.intensity = 0.95;
-        hemiLight.color.set('#ffffff');
-        hemiLight.groundColor.set('#e2e8f0');
-        hemiLight.intensity = 0.65;
+        // Controlled ambient so shadows stay deep and contrast is high
+        ambientLight.color.set('#f1f5f9');
+        ambientLight.intensity = 0.32;
+
+        // Soft fill from cool sky to warm floor
+        hemiLight.color.set('#f8fafc');
+        hemiLight.groundColor.set('#94a3b8');
+        hemiLight.intensity = 0.45;
+
+        // Crisp Key Light for sharp definition and rich contact shadows
         dirLight.visible = true;
-        dirLight.color.set('#ffffff');
-        dirLight.intensity = 1.1;
+        dirLight.color.set('#fff8ee');
+        dirLight.intensity = 1.35;
+        dirLight.position.set(16, 22, 14);
+
+        // Back / Rim Light sculpts the silhouette edges of poles and knots
+        if (rimLight) {
+          rimLight.visible = true;
+          rimLight.color.set('#ffffff');
+          rimLight.intensity = 0.85;
+          rimLight.position.set(-14, 18, -14);
+        }
 
         updateModelMaterials(false);
 
@@ -507,20 +586,27 @@
         // Sleek Dark Showcase
         scene.background = new THREE.Color('#090d16');
         scene.fog = new THREE.FogExp2('#090d16', 0.02);
-        groundMesh.material.color.set('#0f172a');
-        groundMesh.material.roughness = 0.7;
-        groundMesh.material.metalness = 0.1;
+        groundMesh.material = darkGroundMat;
         groundMesh.visible = true;
         groundMesh.receiveShadow = true;
+        if (studioGrid) studioGrid.visible = false;
+        if (studioRingMesh) studioRingMesh.visible = false;
 
         ambientLight.color.set('#94a3b8');
-        ambientLight.intensity = 0.5;
+        ambientLight.intensity = 0.45;
         hemiLight.color.set('#38bdf8');
         hemiLight.groundColor.set('#0f172a');
         hemiLight.intensity = 0.45;
         dirLight.visible = true;
         dirLight.color.set('#f8fafc');
         dirLight.intensity = 1.5;
+        dirLight.position.set(14, 24, 10);
+        if (rimLight) {
+          rimLight.visible = true;
+          rimLight.color.set('#38bdf8');
+          rimLight.intensity = 0.6;
+          rimLight.position.set(-14, 18, -14);
+        }
 
         updateModelMaterials(false);
 
@@ -528,12 +614,15 @@
         // Technical Blueprint Mode
         scene.background = new THREE.Color('#0a1d37');
         scene.fog = null;
-        groundMesh.material.color.set('#0c1e35');
+        groundMesh.material = blueprintGroundMat;
         groundMesh.visible = true;
+        if (studioGrid) studioGrid.visible = false;
+        if (studioRingMesh) studioRingMesh.visible = false;
 
         ambientLight.color.set('#bae6fd');
         ambientLight.intensity = 1.0;
         dirLight.visible = false;
+        if (rimLight) rimLight.intensity = 0;
 
         updateModelMaterials(true);
       }
@@ -618,12 +707,12 @@
         new THREE.MeshStandardMaterial({
           map: barkTexture,
           bumpMap: barkTexture,
-          bumpScale: 0.02,
-          roughness: 0.8,
-          metalness: 0.05
+          bumpScale: 0.025,
+          roughness: 0.72,
+          metalness: 0.04
         }),
-        new THREE.MeshStandardMaterial({ map: ringsTexture, roughness: 0.7, metalness: 0.05 }),
-        new THREE.MeshStandardMaterial({ map: ringsTexture, roughness: 0.7, metalness: 0.05 })
+        new THREE.MeshStandardMaterial({ map: ringsTexture, roughness: 0.7, metalness: 0.04 }),
+        new THREE.MeshStandardMaterial({ map: ringsTexture, roughness: 0.7, metalness: 0.04 })
       ];
 
       const sparMap = new Map();
@@ -647,14 +736,14 @@
         sparMap.set(s.id, { spar: s, mesh });
       });
 
-      // 2. Build Lashings (Knots)
+      // 2. Build Lashings (Knots) - authentic golden hemp rope
       const lashingMaterial = new THREE.MeshStandardMaterial({
         map: ropeTexture,
         bumpMap: ropeTexture,
-        bumpScale: 0.015,
-        roughness: 0.7,
-        metalness: 0.02,
-        color: '#f5efe6'
+        bumpScale: 0.02,
+        roughness: 0.65,
+        metalness: 0.03,
+        color: '#dfb17e'
       });
 
       if (data.lashings) {
