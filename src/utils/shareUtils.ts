@@ -118,11 +118,8 @@ export function getBaseViewerURL(): string {
     return saved.trim();
   }
 
-  // Fallback to current browser location + viewer.html
-  const origin = window.location.origin;
-  // Strip trailing index.html or hash
-  let path = window.location.pathname.replace(/\/index\.html$/i, '').replace(/\/+$/, '');
-  return `${origin}${path}/viewer.html`;
+  // If running on GitHub Pages or by default, use the official GitHub Pages URL
+  return 'https://mahmoud897.github.io/scout_simulator/viewer.html';
 }
 
 /**
