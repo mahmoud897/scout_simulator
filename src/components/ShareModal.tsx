@@ -5,7 +5,8 @@ import {
   generateQRCodeDataURL, 
   getBaseViewerURL, 
   setBaseViewerURL,
-  compactModelData
+  compactModelData,
+  shortenViewerURL
 } from '../utils/shareUtils';
 import { Sounds } from '../utils/sound';
 
@@ -27,6 +28,11 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
   const [showSettings, setShowSettings] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // Short URL state
+  const [shortUrl, setShortUrl] = useState<string>('');
+  const [isShortening, setIsShortening] = useState<boolean>(false);
+  const [showFullUrl, setShowFullUrl] = useState<boolean>(false);
+
   // Raw current scene data
   const rawSceneData = useMemo(() => ({
     spars,
@@ -40,36 +46,66 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
     return generateViewerURL(rawSceneData, customBaseUrl, 'تصميم كشفي ثلاثي الأبعاد');
   }, [rawSceneData, customBaseUrl]);
 
-  // Generate QR Code whenever viewerUrl changes
+  // Generate Short URL & QR Code whenever viewerUrl changes
   useEffect(() => {
     let active = true;
     setLoading(true);
+    setIsShortening(true);
 
-    generateQRCodeDataURL(viewerUrl)
-      .then(url => {
-        if (active) {
-          setQrDataUrl(url);
+    async function processLinkAndQR() {
+      try {
+        // 1. Generate short URL
+        const shortened = await shortenViewerURL(viewerUrl);
+        if (!active) return;
+        setShortUrl(shortened);
+        setIsShortening(false);
+
+        // 2. Generate QR from short URL (or fallback to viewerUrl)
+        const targetForQR = shortened || viewerUrl;
+        const qr = await generateQRCodeDataURL(targetForQR);
+        if (!active) return;
+        setQrDataUrl(qr);
+        setQrError(null);
+        setLoading(false);
+      } catch (err: any) {
+        if (!active) return;
+        setIsShortening(false);
+        // Fallback: try generating QR from viewerUrl if not already tried
+        try {
+          const qr = await generateQRCodeDataURL(viewerUrl);
+          if (!active) return;
+          setQrDataUrl(qr);
           setQrError(null);
-          setLoading(false);
-        }
-      })
-      .catch(err => {
-        if (active) {
+        } catch (qrErr: any) {
+          if (!active) return;
           setQrDataUrl('');
-          setQrError(err?.message || 'حجم التصميم كبير على رمز QR مباشر (يمكنك مشاركته عبر زر نسخ الرابط)');
-          setLoading(false);
+          setQrError(qrErr?.message || 'حجم التصميم كبير على رمز QR');
         }
-      });
+        setLoading(false);
+      }
+    }
+
+    processLinkAndQR();
 
     return () => { active = false; };
   }, [viewerUrl]);
 
+  // Active display URL: short link by default, or full if requested
+  const displayUrl = showFullUrl ? viewerUrl : (shortUrl || viewerUrl);
+
   // Handle Copy Link
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(viewerUrl);
+    navigator.clipboard.writeText(displayUrl);
     setCopied(true);
     Sounds.playSuccess();
     setTimeout(() => setCopied(false), 2500);
+  };
+
+  // Handle WhatsApp Share
+  const handleWhatsAppShare = () => {
+    const text = `تفضل بمشاهدة تصميم الهيكل الكشفي ثلاثي الأبعاد 🏕️:\n${displayUrl}`;
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+    Sounds.playClick();
   };
 
   // Handle Download QR Image
@@ -198,20 +234,38 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
 
         {/* Web Link Copy Field */}
         <div className="mb-4">
-          <label className="block text-xs font-bold text-slate-300 mb-1.5 flex items-center justify-between">
-            <span>رابط المعاينة المباشر:</span>
-            <span className="text-[10px] text-emerald-400 font-mono">جاهز للمشاركة</span>
-          </label>
-          <div className="flex items-center gap-1.5 bg-slate-950 border border-white/10 rounded-xl p-1">
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-300">
+                {showFullUrl ? 'الرابط المباشر الكامل:' : 'الرابط المختصر الذكي:'}
+              </span>
+              {!showFullUrl && shortUrl && (
+                <span className="text-[10px] font-bold bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
+                  <span>✂️</span>
+                  <span>رابط أنيق وخفيف ({displayUrl.length} حرف)</span>
+                </span>
+              )}
+            </div>
+            
+            <button
+              onClick={() => setShowFullUrl(!showFullUrl)}
+              className="text-[10px] text-slate-400 hover:text-emerald-400 underline transition-colors"
+            >
+              {showFullUrl ? 'تبديل إلى الرابط القصير' : 'عرض الرابط المباشر الكامل'}
+            </button>
+          </div>
+
+          <div className="flex items-center gap-1.5 bg-slate-950 border border-white/10 rounded-xl p-1 shadow-inner">
             <input 
               type="text" 
               readOnly 
-              value={viewerUrl}
+              value={isShortening ? 'جارٍ إنشاء رابط قصير وأنيق للمشاركة...' : displayUrl}
               className="bg-transparent text-xs text-slate-300 px-2 py-1.5 flex-1 font-mono outline-none truncate text-left"
               dir="ltr"
             />
             <button
               onClick={handleCopyLink}
+              disabled={isShortening}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
                 copied 
                   ? 'bg-emerald-600 text-slate-950 shadow-glow-emerald' 
@@ -222,19 +276,35 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
               <span>{copied ? 'تم النسخ' : 'نسخ'}</span>
             </button>
           </div>
+
+          {viewerUrl.length > 500 && !showFullUrl && shortUrl && (
+            <p className="text-[10px] text-slate-400 mt-1.5 flex items-center gap-1 font-sans">
+              <span className="text-emerald-400">⚡</span>
+              <span>تم تقليص الرابط من <strong className="text-slate-300 font-mono">{viewerUrl.length}</strong> حرف إلى <strong className="text-emerald-300 font-mono">{shortUrl.length}</strong> حرف فقط لسهولة إرساله في الرسائل!</span>
+            </p>
+          )}
         </div>
 
         {/* Quick Launch & Actions */}
-        <div className="grid grid-cols-2 gap-2 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
+          <button
+            onClick={handleWhatsAppShare}
+            disabled={isShortening}
+            className="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md text-center disabled:opacity-50"
+          >
+            <span className="text-sm">💬</span>
+            <span>إرسال عبر واتساب</span>
+          </button>
+
           <a
-            href={viewerUrl}
+            href={displayUrl}
             target="_blank"
             rel="noopener noreferrer"
             onClick={() => Sounds.playClick()}
-            className="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-md text-center"
+            className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 border border-white/10 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors hover:border-emerald-500/40 text-center"
           >
             <span>🚀</span>
-            <span>فتح المعاينة في تبويب جديد</span>
+            <span>معاينة الرابط</span>
           </a>
 
           <button
@@ -242,7 +312,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
             className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 border border-white/10 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors hover:border-white/20"
           >
             <span>📄</span>
-            <span>تحميل كملف HTML مستقل</span>
+            <span>ملف HTML مستقل</span>
           </button>
         </div>
 

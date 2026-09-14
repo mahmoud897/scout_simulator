@@ -152,6 +152,53 @@ export async function generateQRCodeDataURL(url: string): Promise<string> {
   } catch (err: any) {
     // If still too big for single QR, throw descriptive error
     console.warn('QR Code generation failed, data might be too long:', err?.message);
-    throw new Error('حجم التصميم كبير على رمز QR مباشر (يمكنك مشاركته عبر زر نسخ الرابط أو تحميل ملف HTML)');
+    throw new Error('حجم التصميم كبير على رمز QR مباشر');
   }
+}
+
+/**
+ * Shortens long viewer URL using reliable CORS-enabled shortener services (TinyURL / da.gd)
+ * Produces clean ~25 character links perfect for WhatsApp, Facebook, and crystal-clear QR codes.
+ */
+export async function shortenViewerURL(longUrl: string): Promise<string> {
+  if (!longUrl || longUrl.length < 50) return longUrl;
+
+  // 1. Try TinyURL
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000);
+    const res = await fetch('https://tinyurl.com/api-create.php?url=' + encodeURIComponent(longUrl), {
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+    if (res.ok) {
+      const short = (await res.text()).trim();
+      if (short.startsWith('http://') || short.startsWith('https://')) {
+        return short.replace(/^http:\/\//i, 'https://');
+      }
+    }
+  } catch (e) {
+    console.warn('TinyURL shortener failed or timed out:', e);
+  }
+
+  // 2. Try da.gd as fallback
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch('https://da.gd/s?url=' + encodeURIComponent(longUrl), {
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+    if (res.ok) {
+      const short = (await res.text()).trim();
+      if (short.startsWith('http://') || short.startsWith('https://')) {
+        return short.replace(/^http:\/\//i, 'https://');
+      }
+    }
+  } catch (e) {
+    console.warn('da.gd shortener fallback failed:', e);
+  }
+
+  // Fallback to original URL if offline or network fails
+  return longUrl;
 }
