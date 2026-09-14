@@ -1,0 +1,2568 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>محاكي بناء الهياكل الكشفية - Pioneering Simulator</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Google Fonts (Outfit & Cairo) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Cairo', 'Outfit', 'sans-serif'],
+          },
+          colors: {
+            forest: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              200: '#bbf7d0',
+              500: '#16a34a',
+              600: '#15803d',
+              700: '#166534',
+              800: '#14532d',
+              950: '#052e16',
+            },
+            wood: {
+              50: '#fdf8f5',
+              200: '#f5e3d7',
+              500: '#b7794b',
+              700: '#8c5026',
+              800: '#663412',
+              900: '#451f07',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.05);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(22, 163, 74, 0.3);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(22, 163, 74, 0.5);
+    }
+    
+    /* Neon Glow Effects */
+    .glow-yellow {
+      box-shadow: 0 0 15px rgba(234, 179, 8, 0.6);
+    }
+    
+    /* UI Glassmorphism */
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+  </style>
+
+  <!-- Three.js Import Map -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body class="bg-slate-950 text-slate-100 overflow-hidden h-screen select-none">
+
+  <!-- Loading Screen -->
+  <div id="loadingScreen" class="absolute inset-0 bg-slate-900 z-50 flex flex-col items-center justify-center transition-opacity duration-500">
+    <div class="w-20 h-20 border-4 border-forest-500 border-t-transparent rounded-full animate-spin mb-6"></div>
+    <h1 class="text-3xl font-extrabold text-white tracking-wide">محاكي الهياكل الكشفية ثلاثي الأبعاد</h1>
+    <p class="text-slate-400 mt-2">جاري تحميل البيئة الافتراضية وصناعة الأنسجة الخشبية...</p>
+  </div>
+
+  <!-- 3D Canvas -->
+  <div id="canvas-container" class="w-full h-full absolute inset-0"></div>
+
+  <!-- Floating UI Overlay -->
+  <div class="absolute inset-0 pointer-events-none flex flex-col justify-between p-4 z-10">
+    
+    <!-- Top Toolbar -->
+    <header class="flex justify-between items-center w-full pointer-events-auto">
+      <!-- Title & Branding -->
+      <div class="glass-panel text-white px-4 py-2.5 rounded-2xl flex items-center gap-3">
+        <div class="w-9 h-9 bg-forest-600 rounded-xl flex items-center justify-center text-xl shadow-lg">⛺</div>
+        <div>
+          <h1 class="text-lg font-bold leading-none">محاكي البناء الكشفي</h1>
+          <span class="text-[10px] text-forest-200">الريادة والحبال ثلاثية الأبعاد</span>
+        </div>
+      </div>
+
+      <!-- Center Controls Toolbar -->
+      <div class="glass-panel px-3 py-1.5 rounded-2xl flex items-center gap-2">
+        <!-- Translate mode -->
+        <button id="btn-translate" class="p-2.5 bg-forest-600 text-white rounded-xl hover:bg-forest-500 transition-colors shadow-inner flex items-center justify-center gap-1.5 text-sm" title="تحريك (W)">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 19V5m0 0l-4 4m4-4l4 4m-4 10l-4-4m4 4l4-4M5 12h14m-14 0l4-4m-4 4l4 4"></path></svg>
+          <span class="hidden md:inline">تحريك</span>
+        </button>
+        <!-- Rotate mode -->
+        <button id="btn-rotate" class="p-2.5 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors flex items-center justify-center gap-1.5 text-sm" title="تدوير (E)">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H17"></path></svg>
+          <span class="hidden md:inline">تدوير</span>
+        </button>
+        <div class="h-6 w-px bg-slate-800 mx-1"></div>
+        <!-- Lock/Unlock components -->
+        <button id="btn-lock" class="p-2.5 text-emerald-400 bg-emerald-950/40 border border-emerald-900/50 rounded-xl hover:bg-emerald-900/30 transition-colors flex items-center justify-center gap-1.5 text-sm" title="قفل الربط: تحريك الهياكل المترابطة معاً">
+          <svg id="lock-icon" class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"></path></svg>
+          <span>ترابط صلب</span>
+        </button>
+        <!-- Multi-select toggle button -->
+        <button id="btn-multiselect" class="p-2.5 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors flex items-center justify-center gap-1.5 text-sm" title="تفعيل التحديد المتعدد (أو اضغط Shift أثناء النقر)">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+          <span class="hidden lg:inline">تحديد متعدد</span>
+        </button>
+        <div class="h-6 w-px bg-slate-800 mx-1"></div>
+        <!-- Undo Button -->
+        <button id="btn-undo" class="p-2.5 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors flex items-center justify-center" title="تراجع (Ctrl+Z)">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path></svg>
+        </button>
+        <!-- Delete Button -->
+        <button id="btn-delete" class="p-2.5 text-red-400 hover:bg-red-950/40 rounded-xl hover:text-red-300 transition-colors flex items-center justify-center" title="حذف المحدد (Delete)">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+        </button>
+        <!-- Clear all -->
+        <button id="btn-clear" class="p-2.5 text-slate-400 hover:text-rose-400 rounded-xl hover:bg-rose-950/20 transition-colors flex items-center justify-center text-sm font-semibold" title="مسح المشهد بالكامل">
+          <span>تفريغ</span>
+        </button>
+      </div>
+
+      <!-- Right Side Controls -->
+      <div class="flex items-center gap-2">
+        <button id="btn-sound" class="glass-panel p-2.5 rounded-xl text-slate-300 hover:text-white transition-colors flex items-center justify-center" title="كتم/تفعيل الأصوات">
+          <svg id="sound-icon" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M12 18.75V5.25L7.75 9H4.5A1.5 1.5 0 003 10.5v3A1.5 1.5 0 004.5 15h3.25L12 18.75z"></path></svg>
+        </button>
+        <button id="btn-help" class="glass-panel p-2.5 rounded-xl text-slate-300 hover:text-white transition-colors flex items-center justify-center font-bold text-sm" title="دليل الاستخدام">
+          <span>دليل الاستخدام ❔</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Workspace Layout (Sidebar Left, Content Center, Status/Options Overlays) -->
+    <div class="flex justify-between items-stretch flex-1 my-3 overflow-hidden">
+      
+      <!-- Left Sidebar: Inventory & Templates -->
+      <aside class="glass-panel w-72 rounded-2xl p-4 flex flex-col pointer-events-auto overflow-hidden">
+        
+        <!-- Tab Header -->
+        <div class="flex border-b border-slate-800 mb-3 text-xs">
+          <button id="tab-inventory" class="flex-1 pb-2 border-b-2 border-forest-500 font-bold text-white transition-all text-center">🪵 الأخشاب</button>
+          <button id="tab-templates" class="flex-1 pb-2 border-b-2 border-transparent font-bold text-slate-400 hover:text-white transition-all text-center">📐 قوالب جاهزة</button>
+        </div>
+
+        <!-- Tab 1: Inventory Content -->
+        <div id="content-inventory" class="space-y-3 flex-1 overflow-y-auto pr-1">
+          <!-- Stave -->
+          <div draggable="true" data-type="stave" class="inventory-card bg-slate-900/60 border border-slate-800 hover:border-forest-600 rounded-xl p-3 cursor-grab active:cursor-grabbing hover:bg-slate-800/50 transition-all">
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-bold text-white text-sm">عصا قصيرة (Stave)</span>
+              <span class="text-xs px-2 py-0.5 bg-forest-900/50 text-forest-300 rounded-full border border-forest-800/40">1 متر</span>
+            </div>
+            <p class="text-[11px] text-slate-400">القطر: 5 سم. مفيدة للروابط الفرعية والقوائم القصيرة.</p>
+            <button class="btn-spawn w-full mt-2.5 py-1.5 bg-slate-800 hover:bg-forest-600 text-white rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1" data-type="stave">
+              <span>+ إضافة للمشهد</span>
+            </button>
+          </div>
+          <!-- Medium Spar -->
+          <div draggable="true" data-type="medium" class="inventory-card bg-slate-900/60 border border-slate-800 hover:border-forest-600 rounded-xl p-3 cursor-grab active:cursor-grabbing hover:bg-slate-800/50 transition-all">
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-bold text-white text-sm">خشب متوسط</span>
+              <span class="text-xs px-2 py-0.5 bg-forest-900/50 text-forest-300 rounded-full border border-forest-800/40">3 متر</span>
+            </div>
+            <p class="text-[11px] text-slate-400">القطر: 8 سم. ممتازة لبناء القواعد الرأسية والأفقية والأبراج.</p>
+            <button class="btn-spawn w-full mt-2.5 py-1.5 bg-slate-800 hover:bg-forest-600 text-white rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1" data-type="medium">
+              <span>+ إضافة للمشهد</span>
+            </button>
+          </div>
+          <!-- Long Spar -->
+          <div draggable="true" data-type="long" class="inventory-card bg-slate-900/60 border border-slate-800 hover:border-forest-600 rounded-xl p-3 cursor-grab active:cursor-grabbing hover:bg-slate-800/50 transition-all">
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-bold text-white text-sm">خشب طويل</span>
+              <span class="text-xs px-2 py-0.5 bg-forest-900/50 text-forest-300 rounded-full border border-forest-800/40">4 متر</span>
+            </div>
+            <p class="text-[11px] text-slate-400">القطر: 10 سم. خيار ممتاز لأطراف الجسور الهيكلية الكبيرة.</p>
+            <button class="btn-spawn w-full mt-2.5 py-1.5 bg-slate-800 hover:bg-forest-600 text-white rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1" data-type="long">
+              <span>+ إضافة للمشهد</span>
+            </button>
+          </div>
+          <!-- X-Long Spar -->
+          <div draggable="true" data-type="xlong" class="inventory-card bg-slate-900/60 border border-slate-800 hover:border-forest-600 rounded-xl p-3 cursor-grab active:cursor-grabbing hover:bg-slate-800/50 transition-all">
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-bold text-white text-sm">خشب طويل جداً</span>
+              <span class="text-xs px-2 py-0.5 bg-forest-900/50 text-forest-300 rounded-full border border-forest-800/40">5 متر</span>
+            </div>
+            <p class="text-[11px] text-slate-400">القطر: 10 سم. تستعمل للصواري الأساسية وأطراف الرافعات.</p>
+            <button class="btn-spawn w-full mt-2.5 py-1.5 bg-slate-800 hover:bg-forest-600 text-white rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1" data-type="xlong">
+              <span>+ إضافة للمشهد</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Tab 2: Templates Content (Hidden by default) -->
+        <div id="content-templates" class="space-y-3 flex-1 overflow-y-auto pr-1 hidden">
+          <!-- Template 1: Tripod -->
+          <div class="bg-slate-900/60 border border-slate-800 hover:border-forest-600 rounded-xl p-3 hover:bg-slate-800/50 transition-all">
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-bold text-white text-sm">حامل ثلاثي (Tripod)</span>
+              <span class="text-xs px-2 py-0.5 bg-yellow-900/50 text-yellow-300 rounded-full border border-yellow-800/40">3 أخشاب</span>
+            </div>
+            <p class="text-[11px] text-slate-400">قاعدة الهياكل الكشفية الأساسية. 3 أخشاب متوسطة وربطة ثلاثية في الأعلى.</p>
+            <button id="btn-tmpl-tripod" class="w-full mt-2.5 py-1.5 bg-forest-700 hover:bg-forest-600 text-white rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1">
+              <span>📐 بناء الحامل الثلاثي</span>
+            </button>
+          </div>
+
+          <!-- Template 2: A-Frame -->
+          <div class="bg-slate-900/60 border border-slate-800 hover:border-forest-600 rounded-xl p-3 hover:bg-slate-800/50 transition-all">
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-bold text-white text-sm">إطار ثنائي (A-Frame)</span>
+              <span class="text-xs px-2 py-0.5 bg-yellow-900/50 text-yellow-300 rounded-full border border-yellow-800/40">3 أخشاب</span>
+            </div>
+            <p class="text-[11px] text-slate-400">قائم ثنائي بضلعين متقاطعين وعارضة أفقية مع 3 ربطات متكاملة.</p>
+            <button id="btn-tmpl-aframe" class="w-full mt-2.5 py-1.5 bg-forest-700 hover:bg-forest-600 text-white rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1">
+              <span>📐 بناء الإطار الثنائي</span>
+            </button>
+          </div>
+
+          <!-- Template 3: Platform Tower -->
+          <div class="bg-slate-900/60 border border-slate-800 hover:border-forest-600 rounded-xl p-3 hover:bg-slate-800/50 transition-all">
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-bold text-white text-sm">بوابة برج منصة (Tower Frame)</span>
+              <span class="text-xs px-2 py-0.5 bg-yellow-900/50 text-yellow-300 rounded-full border border-yellow-800/40">8 أخشاب</span>
+            </div>
+            <p class="text-[11px] text-slate-400">هيكل برج رباعي القوائم مع منصة علوية مربعة جاهزة ومربوطة بالكامل.</p>
+            <button id="btn-tmpl-tower" class="w-full mt-2.5 py-1.5 bg-forest-700 hover:bg-forest-600 text-white rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1">
+              <span>📐 بناء البرج المبسط</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-4 pt-3 border-t border-slate-800/80">
+          <h3 class="text-xs font-bold text-slate-400 mb-2">تعليمات البناء:</h3>
+          <p class="text-[10px] text-slate-400 leading-relaxed">
+            عند إنشاء ربطة، سيتم <strong>سحب الخشب ليلتصق ببعضه تلقائياً</strong>.
+            لتعديل مكان الربطة، قم <strong>بإلغاء الترابط الصلب</strong> ثم اسحب الخشبة لتنزلق وتغير موضعها، وسيعاد قفلها عند تفعيل الترابط.
+          </p>
+        </div>
+      </aside>
+
+      <!-- Center Space / Invisible for Pointer Events, but holds floating warnings/actions -->
+      <div class="flex-1 flex flex-col justify-end items-center gap-4 relative">
+        
+        <!-- Hover / Connection Suggestion Notification -->
+        <div id="lash-suggestion-box" class="glass-panel px-5 py-3 rounded-2xl flex items-center gap-4 pointer-events-auto border border-yellow-500/40 animate-bounce shadow-xl hidden">
+          <div class="text-2xl">🪢</div>
+          <div>
+            <h4 class="text-sm font-bold text-yellow-300">تقاطع مكتشف!</h4>
+            <p id="lash-suggestion-text" class="text-xs text-slate-300">ربطة مربعة مقترحة (الزاوية 90°)</p>
+          </div>
+          <button id="btn-create-lash" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg transition-all flex items-center gap-1">
+            <span>ربط الحبال والسحب</span>
+          </button>
+        </div>
+
+        <!-- Simulation Banner -->
+        <div id="sim-status-banner" class="glass-panel px-6 py-3.5 rounded-2xl text-center pointer-events-auto border border-sky-500/30 shadow-2xl hidden">
+          <div class="flex items-center gap-3">
+            <span class="relative flex h-3 w-3">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-3 w-3 bg-sky-500"></span>
+            </span>
+            <div>
+              <h3 class="text-sm font-bold text-sky-400">محاكاة الجاذبية نشطة</h3>
+              <p class="text-xs text-slate-300 mt-0.5">شاهد اتزان الهيكل. اضغط "إعادة ضبط" لتعديل الهيكل.</p>
+            </div>
+            <button id="btn-reset-sim" class="mr-4 px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-100 text-xs rounded-lg transition-colors border border-slate-700">
+              إعادة ضبط الهيكل
+            </button>
+          </div>
+        </div>
+      </div>
+      
+    </div>
+
+    <!-- Bottom Panels -->
+    <footer class="flex justify-between items-end w-full">
+      <!-- Stability Test Controller (Bottom Left) -->
+      <div class="pointer-events-auto">
+        <div class="glass-panel p-3 rounded-2xl flex items-center gap-3 border border-forest-800/40">
+          <button id="btn-stability-test" class="px-6 py-3.5 bg-gradient-to-r from-forest-600 to-emerald-600 hover:from-forest-500 hover:to-emerald-500 text-white font-bold text-base rounded-xl flex items-center gap-2 shadow-lg transition-all hover:scale-105 active:scale-95" title="اختبار صلابة واستقرار الهيكل بالجاذبية">
+            <span>⚖️ اختبار الاستقرار</span>
+          </button>
+          <div class="text-right">
+            <span class="text-[10px] text-slate-400 block leading-tight">فحص التوازن</span>
+            <span id="txt-stability-state" class="text-xs font-semibold text-emerald-400 block mt-0.5">جاهز للفحص ✅</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Detail Info Panel (Bottom Right) -->
+      <div class="pointer-events-auto">
+        <div id="info-panel" class="glass-panel w-80 p-4 rounded-2xl border border-slate-800">
+          <div class="flex justify-between items-center mb-2.5 pb-2 border-b border-slate-800/80">
+            <h3 class="font-bold text-white text-xs flex items-center gap-1.5">
+              <span>📋 تفاصيل العنصر المحدد</span>
+            </h3>
+            <span id="info-badge" class="text-[10px] px-2 py-0.5 bg-slate-800 text-slate-400 rounded-md">لا شيء محدد</span>
+          </div>
+          <div id="info-empty" class="text-center py-4 text-xs text-slate-500">
+            انقر على خشبة أو حبل في المشهد لعرض التفاصيل الهندسية هنا.
+          </div>
+          <div id="info-content" class="space-y-2 text-xs text-slate-300 hidden">
+            <div class="flex justify-between"><span class="text-slate-500">النوع:</span> <span id="info-type" class="font-semibold text-white">-</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">الأبعاد:</span> <span id="info-dimensions" class="font-mono text-white">-</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">الموقع (XYZ):</span> <span id="info-pos" class="font-mono text-white">-</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">الدوران:</span> <span id="info-rot" class="font-mono text-white">-</span></div>
+            <div id="info-extra-row" class="flex justify-between pt-1 border-t border-slate-800/50"><span id="info-extra-label" class="text-slate-500">الروابط:</span> <span id="info-extra-value" class="text-white">-</span></div>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Help & Keyboard Shortcuts Modal -->
+  <div id="helpModal" class="absolute inset-0 bg-slate-950/80 z-40 flex items-center justify-center p-4 backdrop-blur-sm pointer-events-auto hidden">
+    <div class="glass-panel max-w-lg w-full rounded-3xl p-6 border border-slate-800 shadow-2xl relative">
+      <button id="btn-close-help" class="absolute top-4 left-4 text-slate-400 hover:text-white text-2xl font-bold p-1">&times;</button>
+      <h3 class="text-xl font-bold text-white mb-4 flex items-center gap-2">
+        <span>📖 دليل استخدام محاكي البناء ثلاثي الأبعاد</span>
+      </h3>
+      <div class="space-y-4 text-sm text-slate-300 overflow-y-auto max-h-[70vh] pl-2">
+        
+        <div>
+          <h4 class="font-semibold text-forest-400 mb-1">🎮 تصفح الكاميرا:</h4>
+          <ul class="list-disc list-inside space-y-1 text-xs text-slate-300">
+            <li><strong>الزر الأيسر للماوس + السحب:</strong> دوران الكاميرا حول المشهد.</li>
+            <li><strong>الزر الأيمن للماوس + السحب:</strong> إزاحة الكاميرا (Pan).</li>
+            <li><strong>عجلة الماوس:</strong> تقريب وتكبير المشهد (Zoom).</li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="font-semibold text-forest-400 mb-1">🪵 إضافة وتحريك الأخشاب:</h4>
+          <ul class="list-disc list-inside space-y-1 text-xs text-slate-300">
+            <li>اضغط على أي نوع خشبة من <strong>قائمة الأخشاب</strong> أو تبويب <strong>القوالب الجاهزة</strong>.</li>
+            <li>انقر على أي خشبة لتحديدها. اضغط <strong>Shift أثناء النقر</strong> لتحديد أخشاب متعددة!</li>
+            <li>اضغط <strong>W</strong> لتفعيل أداة (التحريك) أو <strong>E</strong> لأداة (التدوير).</li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="font-semibold text-forest-400 mb-1">🪢 ربط الحبال والسحب المغناطيسي:</h4>
+          <ul class="list-disc list-inside space-y-1 text-xs text-slate-300">
+            <li>قرب خشبتين لبعضهما حتى تظهر <strong>حلقة متوهجة صفراء</strong>.</li>
+            <li>عند النقر على <strong>"ربط الحبال والسحب"</strong>، سيتم سحب الخشبتين تلقائياً لتتلامسا مادياً (snapping) وتثبيتهما بربطة الحبل.</li>
+            <li>إذا أردت تعديل موضع الخشبة المربوطة (تنزلق للأعلى أو الأسفل)، قم بتبديل الزر إلى <strong>"تعديل منفرد"</strong> وحرك الخشبة لتنزلق على امتداد الأخرى، ثم أعد تفعيل <strong>"ترابط صلب"</strong> لقفلها.</li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="font-semibold text-forest-400 mb-1">⌨️ اختصارات لوحة المفاتيح الهامة:</h4>
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <div class="bg-slate-900/60 p-2 rounded-lg"><kbd class="bg-slate-800 px-1.5 py-0.5 rounded text-white font-mono">W</kbd> وضع التحريك</div>
+            <div class="bg-slate-900/60 p-2 rounded-lg"><kbd class="bg-slate-800 px-1.5 py-0.5 rounded text-white font-mono">E</kbd> وضع التدوير</div>
+            <div class="bg-slate-900/60 p-2 rounded-lg"><kbd class="bg-slate-800 px-1.5 py-0.5 rounded text-white font-mono">Shift + نقر</kbd> تحديد متعدد</div>
+            <div class="bg-slate-900/60 p-2 rounded-lg"><kbd class="bg-slate-800 px-1.5 py-0.5 rounded text-white font-mono">Delete</kbd> حذف المحدد</div>
+            <div class="bg-slate-900/60 p-2 rounded-lg"><kbd class="bg-slate-800 px-1.5 py-0.5 rounded text-white font-mono">Ctrl + Z</kbd> تراجع عن الخطوة</div>
+            <div class="bg-slate-900/60 p-2 rounded-lg"><kbd class="bg-slate-800 px-1.5 py-0.5 rounded text-white font-mono">نقر أيمن</kbd> إلغاء التحديد</div>
+          </div>
+        </div>
+
+      </div>
+      <button id="btn-start-playing" class="w-full mt-6 py-3 bg-forest-600 hover:bg-forest-500 text-white font-bold rounded-xl transition-all shadow-lg text-sm">
+        بدء البناء والمحاكاة 🚀
+      </button>
+    </div>
+  </div>
+
+  <!-- Javascript Logic -->
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { TransformControls } from 'three/addons/controls/TransformControls.js';
+
+    // -------------------------------------------------------------
+    // RENDER ON DEMAND SYSTEM
+    // -------------------------------------------------------------
+    let renderRequested = false;
+    const clock = new THREE.Clock();
+    let lastTime = performance.now();
+
+    function requestRender() {
+      if (!renderRequested) {
+        renderRequested = true;
+        requestAnimationFrame(renderScene);
+      }
+    }
+
+    function renderScene() {
+      renderRequested = false;
+      
+      const time = performance.now();
+      let dt = (time - lastTime) / 1000;
+      lastTime = time;
+      if (dt > 0.1) dt = 0.1; // cap frame time to avoid jumps
+
+      // Update camera damping if changing
+      orbitControls.update();
+
+      // Update success particles
+      updateConfetti(dt);
+
+      if (simulationActive) {
+        runPhysicsStep(dt);
+        requestRender(); // keep loop running during active physics
+      }
+
+      if (confettiParticles.length > 0) {
+        requestRender(); // keep loop running during active particle effects
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    // -------------------------------------------------------------
+    // AUDIO SYNTHESIZER (Web Audio API)
+    // -------------------------------------------------------------
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+    let soundEnabled = true;
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new AudioContext();
+      }
+    }
+
+    const Sounds = {
+      playThud() {
+        if (!soundEnabled) return;
+        initAudio();
+        if (!audioCtx || audioCtx.state === 'suspended') return;
+        
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(140, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.12);
+        
+        gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
+        
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.13);
+      },
+      
+      playLash() {
+        if (!soundEnabled) return;
+        initAudio();
+        if (!audioCtx || audioCtx.state === 'suspended') return;
+        
+        const bufferSize = audioCtx.sampleRate * 0.2;
+        const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = Math.random() * 2 - 1;
+        }
+        
+        const noise = audioCtx.createBufferSource();
+        noise.buffer = buffer;
+        
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.Q.setValueAtTime(4.0, audioCtx.currentTime);
+        filter.frequency.setValueAtTime(500, audioCtx.currentTime);
+        filter.frequency.exponentialRampToValueAtTime(1400, audioCtx.currentTime + 0.15);
+        
+        const gain = audioCtx.createGain();
+        gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+        
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(audioCtx.destination);
+        
+        noise.start();
+        noise.stop(audioCtx.currentTime + 0.2);
+      },
+
+      playSnap() {
+        if (!soundEnabled) return;
+        initAudio();
+        if (!audioCtx || audioCtx.state === 'suspended') return;
+
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+        osc.frequency.setValueAtTime(150, audioCtx.currentTime + 0.05);
+        
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.1);
+      },
+
+      playCollapse() {
+        if (!soundEnabled) return;
+        initAudio();
+        if (!audioCtx || audioCtx.state === 'suspended') return;
+        
+        let time = audioCtx.currentTime;
+        for (let i = 0; i < 6; i++) {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          
+          osc.type = Math.random() > 0.5 ? 'triangle' : 'sine';
+          osc.frequency.setValueAtTime(90 + Math.random() * 90, time);
+          osc.frequency.exponentialRampToValueAtTime(25, time + 0.25);
+          
+          gain.gain.setValueAtTime(0.5, time);
+          gain.gain.exponentialRampToValueAtTime(0.01, time + 0.25);
+          
+          osc.start(time);
+          osc.stop(time + 0.25);
+          time += 0.06 + Math.random() * 0.08;
+        }
+      },
+
+      playClick() {
+        if (!soundEnabled) return;
+        initAudio();
+        if (!audioCtx || audioCtx.state === 'suspended') return;
+        
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(700, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.005, audioCtx.currentTime + 0.02);
+        
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.02);
+      }
+    };
+
+    // -------------------------------------------------------------
+    // PROCEDURAL TEXTURE GENERATION
+    // -------------------------------------------------------------
+    function createWoodBarkTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 256;
+      const ctx = canvas.getContext('2d');
+      
+      const grad = ctx.createLinearGradient(0, 0, 256, 0);
+      grad.addColorStop(0, '#543d2b');
+      grad.addColorStop(0.3, '#604837');
+      grad.addColorStop(0.7, '#4c3524');
+      grad.addColorStop(1, '#543d2b');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 256, 256);
+      
+      ctx.fillStyle = 'rgba(38, 24, 15, 0.45)';
+      for (let i = 0; i < 30; i++) {
+        const w = 4 + Math.random() * 8;
+        const x = Math.random() * 256;
+        ctx.fillRect(x, 0, w, 256);
+      }
+      
+      ctx.strokeStyle = 'rgba(20, 10, 5, 0.5)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 100; i++) {
+        ctx.beginPath();
+        const x = Math.random() * 256;
+        const y = Math.random() * 256;
+        const len = 15 + Math.random() * 40;
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + (Math.random() - 0.5) * 2, y + len);
+        ctx.stroke();
+      }
+
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+      texture.repeat.set(1, 4);
+      return texture;
+    }
+
+    function createWoodRingsTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 128;
+      canvas.height = 128;
+      const ctx = canvas.getContext('2d');
+      
+      ctx.fillStyle = '#dbb893';
+      ctx.fillRect(0, 0, 128, 128);
+      
+      const cx = 64;
+      const cy = 64;
+      ctx.strokeStyle = 'rgba(92, 64, 43, 0.4)';
+      
+      for (let r = 5; r < 60; r += 4 + Math.random() * 2) {
+        ctx.beginPath();
+        ctx.lineWidth = 1;
+        for (let a = 0; a <= Math.PI * 2 + 0.1; a += 0.1) {
+          const radialOffset = (Math.sin(a * 4) * 0.8) + (Math.cos(a * 6) * 0.5);
+          const currR = r + radialOffset;
+          const x = cx + Math.cos(a) * currR;
+          const y = cy + Math.sin(a) * currR;
+          if (a === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+
+      return new THREE.CanvasTexture(canvas);
+    }
+
+    function createRopeTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 64;
+      canvas.height = 64;
+      const ctx = canvas.getContext('2d');
+      
+      ctx.fillStyle = '#d2b48c';
+      ctx.fillRect(0, 0, 64, 64);
+      
+      ctx.fillStyle = 'rgba(101, 74, 43, 0.3)';
+      for (let x = -64; x < 128; x += 8) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x + 64, 64);
+        ctx.lineTo(x + 64 + 3, 64);
+        ctx.lineTo(x + 3, 0);
+        ctx.fill();
+      }
+
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+      texture.repeat.set(4, 1);
+      return texture;
+    }
+
+    // Initialize textures
+    const woodBarkTexture = createWoodBarkTexture();
+    const woodRingsTexture = createWoodRingsTexture();
+    const ropeTexture = createRopeTexture();
+
+    // -------------------------------------------------------------
+    // THREE.JS APPLICATION SETUP
+    // -------------------------------------------------------------
+    const container = document.getElementById('canvas-container');
+    const loadingScreen = document.getElementById('loadingScreen');
+    
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color('#0b131e');
+    scene.fog = new THREE.FogExp2('#0b131e', 0.025);
+
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 5, 8);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // Limit to 1.5 for performance
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    container.appendChild(renderer.domElement);
+
+    const orbitControls = new OrbitControls(camera, renderer.domElement);
+    orbitControls.enableDamping = true;
+    orbitControls.dampingFactor = 0.05;
+    orbitControls.maxPolarAngle = Math.PI / 2 - 0.02;
+    orbitControls.minDistance = 1;
+    orbitControls.maxDistance = 40;
+    orbitControls.target.set(0, 0.5, 0);
+    orbitControls.addEventListener('change', requestRender);
+
+    // Light Setup
+    const ambientLight = new THREE.AmbientLight('#ffffff', 0.55);
+    scene.add(ambientLight);
+
+    const hemiLight = new THREE.HemisphereLight('#cbd5e1', '#334155', 0.4);
+    hemiLight.position.set(0, 20, 0);
+    scene.add(hemiLight);
+
+    const dirLight = new THREE.DirectionalLight('#fffbeb', 1.1);
+    dirLight.position.set(10, 18, 8);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.width = 1024; // Reduced from 2048 to 1024 for significant performance gains
+    dirLight.shadow.mapSize.height = 1024;
+    dirLight.shadow.bias = -0.0005;
+    dirLight.shadow.camera.near = 0.5;
+    dirLight.shadow.camera.far = 40;
+    const d = 15;
+    dirLight.shadow.camera.left = -d;
+    dirLight.shadow.camera.right = d;
+    dirLight.shadow.camera.top = d;
+    dirLight.shadow.camera.bottom = -d;
+    scene.add(dirLight);
+
+    // Ground Plane
+    const groundGeo = new THREE.PlaneGeometry(100, 100);
+    const groundMat = new THREE.MeshStandardMaterial({
+      color: '#1b3f27',
+      roughness: 0.95,
+      metalness: 0.05
+    });
+    const ground = new THREE.Mesh(groundGeo, groundMat);
+    ground.rotation.x = -Math.PI / 2;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    const gridHelper = new THREE.GridHelper(60, 60, '#2e7d46', '#22543d');
+    gridHelper.position.y = 0.001;
+    scene.add(gridHelper);
+
+    // Sky back
+    const skyGeo = new THREE.SphereGeometry(150, 16, 8); // Reduced detail
+    const skyMat = new THREE.MeshBasicMaterial({ color: '#0b131e', side: THREE.BackSide });
+    const sky = new THREE.Mesh(skyGeo, skyMat);
+    scene.add(sky);
+
+    // Transform Controls
+    const transformControls = new TransformControls(camera, renderer.domElement);
+    scene.add(transformControls);
+    transformControls.size = 0.85;
+    transformControls.addEventListener('change', requestRender);
+
+    // -------------------------------------------------------------
+    // DATA STRUCTURES
+    // -------------------------------------------------------------
+    const SPAR_TYPES = {
+      stave: { length: 1.0, radius: 0.025, mass: 1 },
+      medium: { length: 3.0, radius: 0.04, mass: 4 },
+      long: { length: 4.0, radius: 0.05, mass: 7 },
+      xlong: { length: 5.0, radius: 0.05, mass: 10 }
+    };
+
+    let spars = [];
+    let lashings = [];
+    let lashingGraph = new Map();
+
+    // Multi-Selection State
+    let selectedSpars = []; // Array of selected spar objects
+    let selectedLashing = null; // Currently selected single lashing
+    let multiSelectActive = false; // Toggle for click behavior
+
+    let proximityActive = false;
+    let currentProximityCandidate = null;
+    let lashingLocked = true; // Rigid assembly mode on by default
+    let actionHistory = [];
+
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    // Proximity Visual Indicators
+    const proximityRingGeo = new THREE.RingGeometry(0.18, 0.22, 16); // Reduced segments
+    const proximityRingMat = new THREE.MeshBasicMaterial({ color: 0xeab308, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
+    const proximityRing = new THREE.Mesh(proximityRingGeo, proximityRingMat);
+    proximityRing.rotation.x = Math.PI / 2;
+    proximityRing.visible = false;
+    scene.add(proximityRing);
+
+    const proximityPointGeo = new THREE.SphereGeometry(0.05, 8, 8); // Reduced segments
+    const proximityPointMat = new THREE.MeshBasicMaterial({ color: 0xeab308 });
+    const proximityPoint = new THREE.Mesh(proximityPointGeo, proximityPointMat);
+    proximityPoint.visible = false;
+    scene.add(proximityPoint);
+
+    // Hide loader
+    setTimeout(() => {
+      loadingScreen.style.opacity = '0';
+      setTimeout(() => {
+        loadingScreen.style.display = 'none';
+        requestRender();
+      }, 500);
+    }, 1000);
+
+    // -------------------------------------------------------------
+    // MATERIALS & MESH GENERATION (OPTIMIZED LOW-POLY)
+    // -------------------------------------------------------------
+    const woodBarkMat = new THREE.MeshStandardMaterial({
+      map: woodBarkTexture,
+      roughness: 0.95,
+      metalness: 0.05,
+      bumpMap: woodBarkTexture,
+      bumpScale: 0.015
+    });
+
+    const woodRingsMat = new THREE.MeshStandardMaterial({
+      map: woodRingsTexture,
+      roughness: 0.75,
+      metalness: 0.05
+    });
+
+    const woodMaterials = [woodBarkMat, woodRingsMat, woodRingsMat];
+
+    function createSparMesh(type) {
+      const config = SPAR_TYPES[type];
+      // Reduced radial segments from 12 to 8 for massive geometry saving
+      const geo = new THREE.CylinderGeometry(config.radius, config.radius, config.length, 8, 1);
+      const mesh = new THREE.Mesh(geo, woodMaterials);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.name = "spar";
+      
+      mesh.userData = {
+        type: type,
+        length: config.length,
+        radius: config.radius,
+        mass: config.mass
+      };
+      
+      return mesh;
+    }
+
+    function addSpar(type, position = null, rotation = null, recordHistory = true) {
+      const mesh = createSparMesh(type);
+      
+      if (position) {
+        mesh.position.copy(position);
+      } else {
+        const dir = new THREE.Vector3();
+        camera.getWorldDirection(dir);
+        mesh.position.copy(orbitControls.target).addScaledVector(dir, 0.5);
+        mesh.position.y = Math.max(mesh.position.y, SPAR_TYPES[type].length / 2);
+      }
+
+      if (rotation) {
+        mesh.quaternion.copy(rotation);
+      } else {
+        mesh.rotation.z = (Math.random() - 0.5) * 0.1;
+      }
+
+      scene.add(mesh);
+      
+      const id = THREE.MathUtils.generateUUID();
+      mesh.userData.id = id;
+      
+      const sparObj = {
+        id: id,
+        type: type,
+        mesh: mesh,
+        length: SPAR_TYPES[type].length,
+        radius: SPAR_TYPES[type].radius
+      };
+      
+      spars.push(sparObj);
+      lashingGraph.set(id, new Set());
+      
+      Sounds.playThud();
+      
+      if (recordHistory) {
+        actionHistory.push({
+          action: 'addSpar',
+          spar: { id, type, position: mesh.position.clone(), rotation: mesh.quaternion.clone() }
+        });
+      }
+
+      clearSelection();
+      toggleSparSelection(sparObj);
+      
+      updateStabilityIndicator();
+      requestRender();
+      return sparObj;
+    }
+
+    // Spawns a spar along a segment (from pA to pB), perfect for templates
+    function addSparAlongSegment(type, pA, pB, recordHistory = true) {
+      const mesh = createSparMesh(type);
+      const mid = new THREE.Vector3().addVectors(pA, pB).multiplyScalar(0.5);
+      mesh.position.copy(mid);
+      
+      const dir = new THREE.Vector3().subVectors(pB, pA);
+      const dirNormalized = dir.clone().normalize();
+      
+      const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dirNormalized);
+      mesh.quaternion.copy(q);
+      
+      scene.add(mesh);
+      
+      const id = THREE.MathUtils.generateUUID();
+      mesh.userData.id = id;
+      
+      const sparObj = {
+        id: id,
+        type: type,
+        mesh: mesh,
+        length: SPAR_TYPES[type].length,
+        radius: SPAR_TYPES[type].radius
+      };
+      
+      spars.push(sparObj);
+      lashingGraph.set(id, new Set());
+      
+      if (recordHistory) {
+        actionHistory.push({
+          action: 'addSpar',
+          spar: { id, type, position: mesh.position.clone(), rotation: mesh.quaternion.clone() }
+        });
+      }
+      
+      return sparObj;
+    }
+
+    // -------------------------------------------------------------
+    // ROPE LASHING GRAPHIC GENERATION (OPTIMIZED LOW-POLY)
+    // -------------------------------------------------------------
+    const ropeMat = new THREE.MeshStandardMaterial({
+      map: ropeTexture,
+      roughness: 0.9,
+      bumpMap: ropeTexture,
+      bumpScale: 0.01
+    });
+
+    function createLashingMesh(pos, dirA, dirB, rA, rB, type) {
+      const group = new THREE.Group();
+      group.position.copy(pos);
+
+      const mainRadius = (rA + rB) * 1.1;
+      const ropeRadius = 0.012;
+
+      const qA = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dirA.clone().normalize());
+      const qB = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dirB.clone().normalize());
+
+      // Lower radial/tubular segments for huge face count reductions (6, 12 instead of 8, 24)
+      if (type === 'square' || type === 'diagonal') {
+        // 2 loops along A
+        for (let i = -1; i <= 1; i += 2) {
+          const torusGeo = new THREE.TorusGeometry(rA + ropeRadius * 1.2, ropeRadius, 6, 12);
+          const torus = new THREE.Mesh(torusGeo, ropeMat);
+          torus.quaternion.copy(qA);
+          torus.rotation.x += Math.PI / 2;
+          torus.position.addScaledVector(dirA, i * 0.025);
+          torus.castShadow = true;
+          group.add(torus);
+        }
+
+        // 2 loops along B
+        for (let i = -1; i <= 1; i += 2) {
+          const torusGeo = new THREE.TorusGeometry(rB + ropeRadius * 1.2, ropeRadius, 6, 12);
+          const torus = new THREE.Mesh(torusGeo, ropeMat);
+          torus.quaternion.copy(qB);
+          torus.rotation.x += Math.PI / 2;
+          torus.position.addScaledVector(dirB, i * 0.025);
+          torus.castShadow = true;
+          group.add(torus);
+        }
+
+        // Frapping turns
+        const crossTorusGeo = new THREE.TorusGeometry(mainRadius * 0.85, ropeRadius * 1.4, 6, 12);
+        const frap1 = new THREE.Mesh(crossTorusGeo, ropeMat);
+        const crossDir = new THREE.Vector3().addVectors(dirA, dirB).normalize();
+        frap1.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), crossDir);
+        frap1.castShadow = true;
+        group.add(frap1);
+
+      } else if (type === 'shear') {
+        const avgDir = new THREE.Vector3().addVectors(dirA, dirB).normalize();
+        const qAvg = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), avgDir);
+        
+        for (let i = -2; i <= 2; i += 2) {
+          const ellipseGeo = new THREE.TorusGeometry((rA + rB) * 0.85, ropeRadius, 6, 12);
+          const loop = new THREE.Mesh(ellipseGeo, ropeMat);
+          loop.quaternion.copy(qAvg);
+          loop.rotation.x += Math.PI / 2;
+          loop.position.addScaledVector(avgDir, i * 0.03);
+          loop.scale.set(1.5, 0.8, 1.0);
+          loop.castShadow = true;
+          group.add(loop);
+        }
+      } else if (type === 'tripod') {
+        for (let i = -1; i <= 1; i++) {
+          const torusGeo = new THREE.TorusGeometry((rA + rB) * 1.25, ropeRadius * 1.6, 6, 12);
+          const torus = new THREE.Mesh(torusGeo, ropeMat);
+          torus.quaternion.copy(qA);
+          torus.rotation.x += Math.PI / 2;
+          torus.position.addScaledVector(dirA, i * 0.035);
+          torus.castShadow = true;
+          group.add(torus);
+        }
+      }
+
+      return group;
+    }
+
+    function addLashing(sparA, sparB, point, angle, type, recordHistory = true, triggerSnap = true) {
+      // 1. Physical Snap: Bring the two spars into exact contact
+      if (triggerSnap) {
+        const halfLA = sparA.length / 2;
+        const p1 = new THREE.Vector3(0, -halfLA, 0).applyMatrix4(sparA.mesh.matrixWorld);
+        const p2 = new THREE.Vector3(0, halfLA, 0).applyMatrix4(sparA.mesh.matrixWorld);
+
+        const halfLB = sparB.length / 2;
+        const q1 = new THREE.Vector3(0, -halfLB, 0).applyMatrix4(sparB.mesh.matrixWorld);
+        const q2 = new THREE.Vector3(0, halfLB, 0).applyMatrix4(sparB.mesh.matrixWorld);
+
+        const res = getClosestPointsBetweenSegments(p1, p2, q1, q2);
+        
+        // Target physical contact distance
+        const physicalDistance = res.distance;
+        const radiusSum = sparA.radius + sparB.radius;
+        const gap = physicalDistance - radiusSum;
+
+        if (gap > 0.001) {
+          // Translate Spar B to touch Spar A
+          const snapDirection = new THREE.Vector3().subVectors(res.pointS1, res.pointS2).normalize();
+          const snapTranslation = snapDirection.clone().multiplyScalar(gap);
+          
+          sparB.mesh.position.add(snapTranslation);
+          sparB.mesh.updateMatrixWorld(true);
+          
+          // Re-calculate snapping midpoint
+          const newQ1 = new THREE.Vector3(0, -halfLB, 0).applyMatrix4(sparB.mesh.matrixWorld);
+          const newQ2 = new THREE.Vector3(0, halfLB, 0).applyMatrix4(sparB.mesh.matrixWorld);
+          const newRes = getClosestPointsBetweenSegments(p1, p2, newQ1, newQ2);
+          point.copy(new THREE.Vector3().addVectors(newRes.pointS1, newRes.pointS2).multiplyScalar(0.5));
+          
+          Sounds.playSnap();
+        }
+      }
+
+      // Directions
+      const dirA = new THREE.Vector3(0, 1, 0).applyQuaternion(sparA.mesh.quaternion).normalize();
+      const dirB = new THREE.Vector3(0, 1, 0).applyQuaternion(sparB.mesh.quaternion).normalize();
+
+      const lashingMeshGroup = createLashingMesh(point, dirA, dirB, sparA.radius, sparB.radius, type);
+      scene.add(lashingMeshGroup);
+
+      const id = THREE.MathUtils.generateUUID();
+      lashingMeshGroup.name = "lashing";
+      lashingMeshGroup.userData = {
+        id: id,
+        type: type,
+        sparAId: sparA.id,
+        sparBId: sparB.id,
+        angle: angle,
+        point: point.clone()
+      };
+
+      const lashingObj = {
+        id: id,
+        type: type,
+        sparA: sparA,
+        sparB: sparB,
+        mesh: lashingMeshGroup,
+        position: point.clone(),
+        angle: angle
+      };
+
+      lashings.push(lashingObj);
+
+      lashingGraph.get(sparA.id).add({ neighborId: sparB.id, lashingId: id });
+      lashingGraph.get(sparB.id).add({ neighborId: sparA.id, lashingId: id });
+
+      Sounds.playLash();
+
+      // Clear proximity overlays
+      proximityPoint.visible = false;
+      proximityRing.visible = false;
+      proximityActive = false;
+      document.getElementById('lash-suggestion-box').classList.add('hidden');
+
+      if (recordHistory) {
+        actionHistory.push({
+          action: 'addLashing',
+          lashing: { id, sparAId: sparA.id, sparBId: sparB.id, point: point.clone(), angle, type }
+        });
+      }
+
+      selectLashing(lashingMeshGroup);
+      updateStabilityIndicator();
+      requestRender();
+      return lashingObj;
+    }
+
+    // -------------------------------------------------------------
+    // LINE SEGMENT MATHEMATICS (CLOSEST POINTS)
+    // -------------------------------------------------------------
+    function getClosestPointsBetweenSegments(p1, p2, q1, q2) {
+      const u = new THREE.Vector3().subVectors(p2, p1);
+      const v = new THREE.Vector3().subVectors(q2, q1);
+      const w0 = new THREE.Vector3().subVectors(p1, q1);
+      
+      const a = u.dot(u);
+      const b = u.dot(v);
+      const c = v.dot(v);
+      const d = u.dot(w0);
+      const e = v.dot(w0);
+      
+      const D = a * c - b * b;
+      let sN, sD = D;
+      let tN, tD = D;
+      
+      const SMALL_NUM = 0.0000001;
+      
+      if (D < SMALL_NUM) {
+        sN = 0.0;
+        sD = 1.0;
+        tN = e;
+        tD = c;
+      } else {
+        sN = (b * e - c * d);
+        tN = (a * e - b * d);
+        if (sN < 0.0) {
+          sN = 0.0;
+          tN = e;
+          tD = c;
+        } else if (sN > sD) {
+          sN = sD;
+          tN = e + b;
+          tD = c;
+        }
+      }
+      
+      if (tN < 0.0) {
+        tN = 0.0;
+        if (-d < 0.0) {
+          sN = 0.0;
+        } else if (-d > a) {
+          sN = sD;
+        } else {
+          sN = -d;
+          sD = a;
+        }
+      } else if (tN > tD) {
+        tN = tD;
+        if ((-d + b) < 0.0) {
+          sN = 0;
+        } else if ((-d + b) > a) {
+          sN = sD;
+        } else {
+          sN = (-d + b);
+          sD = a;
+        }
+      }
+      
+      const sc = Math.abs(sN) < SMALL_NUM ? 0.0 : sN / sD;
+      const tc = Math.abs(tN) < SMALL_NUM ? 0.0 : tN / tD;
+      
+      const closestPointS1 = new THREE.Vector3().addScaledVector(u, sc).add(p1);
+      const closestPointS2 = new THREE.Vector3().addScaledVector(v, tc).add(q1);
+      
+      return {
+        pointS1: closestPointS1,
+        pointS2: closestPointS2,
+        distance: closestPointS1.distanceTo(closestPointS2)
+      };
+    }
+
+    function checkProximity() {
+      if (spars.length < 2 || simulationActive) {
+        hideProximityIndicator();
+        return;
+      }
+
+      let closestPair = null;
+      let minDistance = Infinity;
+
+      for (let i = 0; i < spars.length; i++) {
+        const sA = spars[i];
+        const halfLenA = sA.length / 2;
+        const p1 = new THREE.Vector3(0, -halfLenA, 0).applyMatrix4(sA.mesh.matrixWorld);
+        const p2 = new THREE.Vector3(0, halfLenA, 0).applyMatrix4(sA.mesh.matrixWorld);
+
+        for (let j = i + 1; j < spars.length; j++) {
+          const sB = spars[j];
+          
+          let alreadyConnected = false;
+          const neighbors = lashingGraph.get(sA.id);
+          if (neighbors) {
+            for (let edge of neighbors) {
+              if (edge.neighborId === sB.id) {
+                alreadyConnected = true;
+                break;
+              }
+            }
+          }
+          if (alreadyConnected) continue;
+
+          const halfLenB = sB.length / 2;
+          const q1 = new THREE.Vector3(0, -halfLenB, 0).applyMatrix4(sB.mesh.matrixWorld);
+          const q2 = new THREE.Vector3(0, halfLenB, 0).applyMatrix4(sB.mesh.matrixWorld);
+
+          const res = getClosestPointsBetweenSegments(p1, p2, q1, q2);
+          const physicalDist = res.distance - (sA.radius + sB.radius);
+
+          if (physicalDist < minDistance) {
+            minDistance = physicalDist;
+            closestPair = {
+              sparA: sA,
+              sparB: sB,
+              ptA: res.pointS1,
+              ptB: res.pointS2,
+              distance: physicalDist
+            };
+          }
+        }
+      }
+
+      if (closestPair && closestPair.distance < 0.3) {
+        const midPoint = new THREE.Vector3().addVectors(closestPair.ptA, closestPair.ptB).multiplyScalar(0.5);
+        
+        const dirA = new THREE.Vector3(0, 1, 0).applyQuaternion(closestPair.sparA.mesh.quaternion).normalize();
+        const dirB = new THREE.Vector3(0, 1, 0).applyQuaternion(closestPair.sparB.mesh.quaternion).normalize();
+        const angleRad = dirA.angleTo(dirB);
+        let angleDeg = THREE.MathUtils.radToDeg(angleRad);
+        if (angleDeg > 90) angleDeg = 180 - angleDeg;
+
+        let lashType = 'diagonal';
+        let lashTypeNameAr = 'ربطة قطرية';
+        
+        if (angleDeg > 70) {
+          lashType = 'square';
+          lashTypeNameAr = 'ربطة مربعة (زاوية قائمة)';
+        } else if (angleDeg < 15) {
+          lashType = 'shear';
+          lashTypeNameAr = 'ربطة قص (متوازية)';
+        }
+
+        proximityPoint.position.copy(midPoint);
+        proximityPoint.visible = true;
+
+        proximityRing.position.copy(midPoint);
+        const ringNormal = new THREE.Vector3().crossVectors(dirA, dirB).normalize();
+        if (ringNormal.lengthSq() > 0.01) {
+          proximityRing.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), ringNormal);
+        } else {
+          proximityRing.rotation.set(Math.PI / 2, 0, 0);
+        }
+        proximityRing.visible = true;
+
+        // Animate ring pulse
+        const scale = 1.0 + Math.sin(Date.now() * 0.005) * 0.15;
+        proximityRing.scale.set(scale, scale, scale);
+
+        currentProximityCandidate = {
+          sparA: closestPair.sparA,
+          sparB: closestPair.sparB,
+          point: midPoint,
+          angle: angleDeg,
+          type: lashType
+        };
+
+        const box = document.getElementById('lash-suggestion-box');
+        const text = document.getElementById('lash-suggestion-text');
+        text.innerText = `تقاطع مكتشف بين خشبتين: ${lashTypeNameAr}`;
+        box.classList.remove('hidden');
+        proximityActive = true;
+      } else {
+        hideProximityIndicator();
+      }
+    }
+
+    function hideProximityIndicator() {
+      proximityPoint.visible = false;
+      proximityRing.visible = false;
+      document.getElementById('lash-suggestion-box').classList.add('hidden');
+      currentProximityCandidate = null;
+      proximityActive = false;
+    }
+
+    // -------------------------------------------------------------
+    // DYNAMIC LASHING SLIDING & AUTO SNAPPING (UNLOCKED MODE)
+    // -------------------------------------------------------------
+    function updateLashingsDynamic() {
+      if (lashingLocked) return; // Do not recalculate if locked
+
+      const lashingsToBreak = [];
+
+      lashings.forEach(l => {
+        const sA = l.sparA;
+        const sB = l.sparB;
+
+        const halfLA = sA.length / 2;
+        const p1 = new THREE.Vector3(0, -halfLA, 0).applyMatrix4(sA.mesh.matrixWorld);
+        const p2 = new THREE.Vector3(0, halfLA, 0).applyMatrix4(sA.mesh.matrixWorld);
+
+        const halfLB = sB.length / 2;
+        const q1 = new THREE.Vector3(0, -halfLB, 0).applyMatrix4(sB.mesh.matrixWorld);
+        const q2 = new THREE.Vector3(0, halfLB, 0).applyMatrix4(sB.mesh.matrixWorld);
+
+        const res = getClosestPointsBetweenSegments(p1, p2, q1, q2);
+        const radiusSum = sA.radius + sB.radius;
+        const gap = res.distance - radiusSum;
+
+        // If distance remains close, snap and update lashing position
+        if (res.distance < 0.6) {
+          if (gap > 0.005) {
+            // Apply snapping correction to restore physical contact
+            const snapDir = new THREE.Vector3().subVectors(res.pointS1, res.pointS2).normalize();
+            const translation = snapDir.clone().multiplyScalar(gap);
+            
+            // Move B to touch A
+            sB.mesh.position.add(translation);
+            sB.mesh.updateMatrixWorld(true);
+
+            // Re-calculate closest point details
+            const newQ1 = new THREE.Vector3(0, -halfLB, 0).applyMatrix4(sB.mesh.matrixWorld);
+            const newQ2 = new THREE.Vector3(0, halfLB, 0).applyMatrix4(sB.mesh.matrixWorld);
+            const newRes = getClosestPointsBetweenSegments(p1, p2, newQ1, newQ2);
+            res.pointS1.copy(newRes.pointS1);
+            res.pointS2.copy(newRes.pointS2);
+          }
+
+          // Position the lashing mesh at the new contact point
+          const midPoint = new THREE.Vector3().addVectors(res.pointS1, res.pointS2).multiplyScalar(0.5);
+          l.mesh.position.copy(midPoint);
+          l.position.copy(midPoint);
+          l.mesh.userData.point.copy(midPoint);
+
+          // Update relative angle
+          const dirA = new THREE.Vector3(0, 1, 0).applyQuaternion(sA.mesh.quaternion).normalize();
+          const dirB = new THREE.Vector3(0, 1, 0).applyQuaternion(sB.mesh.quaternion).normalize();
+          const angleRad = dirA.angleTo(dirB);
+          let angleDeg = THREE.MathUtils.radToDeg(angleRad);
+          if (angleDeg > 90) angleDeg = 180 - angleDeg;
+          l.angle = angleDeg;
+          l.mesh.userData.angle = angleDeg;
+        } else {
+          // Beyond 60cm gap, the rope snaps/breaks
+          lashingsToBreak.push(l.id);
+        }
+      });
+
+      // Break lashings collected
+      lashingsToBreak.forEach(id => {
+        breakLashingById(id);
+      });
+
+      if (lashingsToBreak.length > 0) {
+        updateStabilityIndicator();
+      }
+    }
+
+    function breakLashingById(id) {
+      const idx = lashings.findIndex(l => l.id === id);
+      if (idx === -1) return;
+
+      const lash = lashings[idx];
+      scene.remove(lash.mesh);
+
+      // Remove graph edges
+      const edgesA = lashingGraph.get(lash.sparA.id);
+      if (edgesA) { for (let e of edgesA) { if (e.lashingId === id) { edgesA.delete(e); break; } } }
+      const edgesB = lashingGraph.get(lash.sparB.id);
+      if (edgesB) { for (let e of edgesB) { if (e.lashingId === id) { edgesB.delete(e); break; } } }
+
+      lashings.splice(idx, 1);
+      Sounds.playThud(); // breaking thud
+    }
+
+    // -------------------------------------------------------------
+    // GRAPH-BASED ASSEMBLY MOVEMENT
+    // -------------------------------------------------------------
+    function getConnectedComponent(startSparId) {
+      const visitedSpars = new Set();
+      const visitedLashings = new Set();
+      const queue = [startSparId];
+      visitedSpars.add(startSparId);
+
+      while (queue.length > 0) {
+        const current = queue.shift();
+        const edges = lashingGraph.get(current);
+        if (edges) {
+          for (let edge of edges) {
+            visitedLashings.add(edge.lashingId);
+            if (!visitedSpars.has(edge.neighborId)) {
+              visitedSpars.add(edge.neighborId);
+              queue.push(edge.neighborId);
+            }
+          }
+        }
+      }
+
+      return {
+        sparIds: Array.from(visitedSpars),
+        lashingIds: Array.from(visitedLashings)
+      };
+    }
+
+    // Rigid assembly and multi-select drag synchronization state
+    let dragSyncActive = false;
+    let dragSyncLeader = null;
+    let dragSyncLeaderStartInv = new THREE.Matrix4();
+    let dragSyncFollowers = []; // List of { mesh, startMatrix }
+
+    function setupDragSync() {
+      if (selectedSpars.length === 0) return;
+
+      dragSyncLeader = selectedSpars[0].mesh;
+      dragSyncLeader.updateMatrixWorld(true);
+      dragSyncLeaderStartInv.copy(dragSyncLeader.matrixWorld).invert();
+      dragSyncFollowers = [];
+
+      const followerMeshes = new Set();
+
+      // If multi-selection is active, all other selected spars are followers
+      if (selectedSpars.length > 1) {
+        selectedSpars.forEach(s => {
+          if (s.mesh !== dragSyncLeader) {
+            followerMeshes.add(s.mesh);
+          }
+        });
+      }
+
+      // If lashing lock is active, find all connected spars and lashings for the group
+      if (lashingLocked) {
+        const startIds = selectedSpars.map(s => s.id);
+        
+        startIds.forEach(startId => {
+          const comp = getConnectedComponent(startId);
+          comp.sparIds.forEach(id => {
+            const s = spars.find(x => x.id === id);
+            if (s && s.mesh !== dragSyncLeader) {
+              followerMeshes.add(s.mesh);
+            }
+          });
+          comp.lashingIds.forEach(id => {
+            const l = lashings.find(x => x.id === id);
+            if (l) {
+              followerMeshes.add(l.mesh);
+            }
+          });
+        });
+      }
+
+      // Record starting matrices for all followers
+      followerMeshes.forEach(mesh => {
+        mesh.updateMatrixWorld(true);
+        dragSyncFollowers.push({
+          mesh: mesh,
+          startMatrix: mesh.matrixWorld.clone()
+        });
+      });
+
+      dragSyncActive = true;
+    }
+
+    function updateDragSync() {
+      if (!dragSyncActive || !dragSyncLeader) return;
+
+      const currentMatrix = dragSyncLeader.matrixWorld;
+      const deltaMatrix = new THREE.Matrix4().multiplyMatrices(currentMatrix, dragSyncLeaderStartInv);
+
+      dragSyncFollowers.forEach(follower => {
+        const newMatrix = new THREE.Matrix4().multiplyMatrices(deltaMatrix, follower.startMatrix);
+        
+        newMatrix.decompose(follower.mesh.position, follower.mesh.quaternion, follower.mesh.scale);
+        follower.mesh.updateMatrixWorld(true);
+      });
+    }
+
+    function clearDragSync() {
+      dragSyncActive = false;
+      dragSyncLeader = null;
+      dragSyncFollowers = [];
+    }
+
+    // -------------------------------------------------------------
+    // SELECTION & MULTI-SELECTION SYSTEM
+    // -------------------------------------------------------------
+    function toggleSparSelection(sparObj, append = false) {
+      selectedLashing = null; // deselect active lashing
+
+      if (!append) {
+        clearSelection();
+      }
+
+      const idx = selectedSpars.indexOf(sparObj);
+      if (idx !== -1) {
+        // Deselect
+        sparObj.mesh.material = woodMaterials;
+        selectedSpars.splice(idx, 1);
+      } else {
+        // Select
+        selectedSpars.push(sparObj);
+        sparObj.mesh.material = woodMaterials.map(m => m.clone());
+        sparObj.mesh.material[0].color.setHex(0xeab308); // highlight side
+      }
+
+      updateInfoPanel();
+      Sounds.playClick();
+      
+      // Update transform controls
+      if (selectedSpars.length >= 1) {
+        transformControls.attach(selectedSpars[0].mesh);
+      } else {
+        transformControls.detach();
+      }
+      requestRender();
+    }
+
+    function selectLashing(meshGroup) {
+      clearSelection();
+      selectedLashing = meshGroup;
+      meshGroup.children.forEach(c => {
+        c.material = ropeMat.clone();
+        c.material.color.setHex(0xeab308);
+      });
+
+      transformControls.detach();
+      updateInfoPanel();
+      Sounds.playClick();
+      requestRender();
+    }
+
+    function clearSelection() {
+      // Restore spars materials
+      selectedSpars.forEach(s => {
+        s.mesh.material = woodMaterials;
+      });
+      selectedSpars = [];
+
+      // Restore lashing materials
+      if (selectedLashing) {
+        selectedLashing.children.forEach(c => {
+          c.material = ropeMat;
+        });
+        selectedLashing = null;
+      }
+
+      transformControls.detach();
+      updateInfoPanel();
+      requestRender();
+    }
+
+    function updateInfoPanel() {
+      const badge = document.getElementById('info-badge');
+      const empty = document.getElementById('info-empty');
+      const content = document.getElementById('info-content');
+
+      if (selectedSpars.length === 1) {
+        const s = selectedSpars[0];
+        badge.innerText = "عصا خشبية";
+        badge.className = "text-[10px] px-2 py-0.5 bg-forest-900/50 text-forest-300 rounded-md border border-forest-800/40";
+        document.getElementById('info-type').innerText = translateSparType(s.type);
+        document.getElementById('info-dimensions').innerText = `الطول: ${s.length}م | القطر: ${s.radius * 2 * 100}سم`;
+        document.getElementById('info-pos').innerText = `X:${s.mesh.position.x.toFixed(2)} Y:${s.mesh.position.y.toFixed(2)} Z:${s.mesh.position.z.toFixed(2)}`;
+        
+        const rotDeg = new THREE.Euler().setFromQuaternion(s.mesh.quaternion);
+        document.getElementById('info-rot').innerText = `X:${THREE.MathUtils.radToDeg(rotDeg.x).toFixed(0)}° Y:${THREE.MathUtils.radToDeg(rotDeg.y).toFixed(0)}° Z:${THREE.MathUtils.radToDeg(rotDeg.z).toFixed(0)}°`;
+        
+        const conns = lashingGraph.get(s.id)?.size || 0;
+        document.getElementById('info-extra-label').innerText = "الربطات الحالية:";
+        document.getElementById('info-extra-value').innerText = `${conns} ربطة`;
+
+        empty.classList.add('hidden');
+        content.classList.remove('hidden');
+      } else if (selectedSpars.length > 1) {
+        badge.innerText = "تحديد متعدد";
+        badge.className = "text-[10px] px-2 py-0.5 bg-sky-950 text-sky-300 rounded-md border border-sky-850";
+        document.getElementById('info-type').innerText = `مجموعة أخشاب كشفية`;
+        document.getElementById('info-dimensions').innerText = `العدد المجموعي: ${selectedSpars.length} أخشاب`;
+        document.getElementById('info-pos').innerText = "مواقع متعددة";
+        document.getElementById('info-rot').innerText = "مستويات دوران متعددة";
+        document.getElementById('info-extra-label').innerText = "وضع الحركة:";
+        document.getElementById('info-extra-value').innerText = "تحريك ككتلة واحدة (مع Shift)";
+
+        empty.classList.add('hidden');
+        content.classList.remove('hidden');
+      } else if (selectedLashing) {
+        const u = selectedLashing.userData;
+        badge.innerText = "ربطة حبل";
+        badge.className = "text-[10px] px-2 py-0.5 bg-yellow-950 text-yellow-300 rounded-md border border-yellow-800/40";
+        document.getElementById('info-type').innerText = translateLashingType(u.type);
+        document.getElementById('info-dimensions').innerText = `الزاوية: ${u.angle.toFixed(1)}°`;
+        document.getElementById('info-pos').innerText = `X:${selectedLashing.position.x.toFixed(2)} Y:${selectedLashing.position.y.toFixed(2)} Z:${selectedLashing.position.z.toFixed(2)}`;
+        document.getElementById('info-rot').innerText = "ثابتة عند نقطة التقاطع";
+        document.getElementById('info-extra-label').innerText = "صلابة الاتصال:";
+        document.getElementById('info-extra-value').innerText = "ربطة تثبيت مغناطيسية";
+
+        empty.classList.add('hidden');
+        content.classList.remove('hidden');
+      } else {
+        badge.innerText = "لا شيء محدد";
+        badge.className = "text-[10px] px-2 py-0.5 bg-slate-800 text-slate-400 rounded-md";
+        empty.classList.remove('hidden');
+        content.classList.add('hidden');
+      }
+    }
+
+    // Multi drag grouping functions removed (replaced by mathematical delta transformation sync)
+
+    // -------------------------------------------------------------
+    // DELETE, UNDO & ACTIONS
+    // -------------------------------------------------------------
+    function deleteSelected(recordHistory = true) {
+      if (selectedSpars.length === 0 && !selectedLashing) return;
+
+      deselectAllAndControls();
+
+      // Deleting multiple spars
+      if (selectedSpars.length > 0) {
+        const deletedSparsHistory = [];
+        const deletedLashingsHistory = [];
+
+        selectedSpars.forEach(s => {
+          const sIdx = spars.findIndex(x => x.id === s.id);
+          if (sIdx === -1) return;
+
+          // Delete connected lashings
+          const edges = Array.from(lashingGraph.get(s.id) || []);
+          edges.forEach(edge => {
+            const lIdx = lashings.findIndex(l => l.id === edge.lashingId);
+            if (lIdx !== -1) {
+              const lash = lashings[lIdx];
+              scene.remove(lash.mesh);
+              
+              const neighborEdges = lashingGraph.get(edge.neighborId);
+              if (neighborEdges) {
+                for (let e of neighborEdges) {
+                  if (e.neighborId === s.id) { neighborEdges.delete(e); break; }
+                }
+              }
+
+              deletedLashingsHistory.push({
+                id: lash.id,
+                type: lash.type,
+                sparAId: lash.sparA.id,
+                sparBId: lash.sparB.id,
+                point: lash.position.clone(),
+                angle: lash.angle
+              });
+
+              lashings.splice(lIdx, 1);
+            }
+          });
+
+          scene.remove(s.mesh);
+          spars.splice(sIdx, 1);
+          lashingGraph.delete(s.id);
+
+          deletedSparsHistory.push({
+            id: s.id,
+            type: s.type,
+            position: s.mesh.position.clone(),
+            rotation: s.mesh.quaternion.clone()
+          });
+        });
+
+        if (recordHistory) {
+          actionHistory.push({
+            action: 'deleteMultiSpars',
+            spars: deletedSparsHistory,
+            lashings: deletedLashingsHistory
+          });
+        }
+        selectedSpars = [];
+      } else if (selectedLashing) {
+        const id = selectedLashing.userData.id;
+        const idx = lashings.findIndex(l => l.id === id);
+        if (idx === -1) return;
+
+        const lash = lashings[idx];
+        scene.remove(lash.mesh);
+
+        const eA = lashingGraph.get(lash.sparA.id);
+        if (eA) { for (let e of eA) { if (e.lashingId === id) { eA.delete(e); break; } } }
+        const eB = lashingGraph.get(lash.sparB.id);
+        if (eB) { for (let e of eB) { if (e.lashingId === id) { eB.delete(e); break; } } }
+
+        if (recordHistory) {
+          actionHistory.push({
+            action: 'deleteLashing',
+            lashing: {
+              id: lash.id,
+              type: lash.type,
+              sparAId: lash.sparA.id,
+              sparBId: lash.sparB.id,
+              point: lash.position.clone(),
+              angle: lash.angle
+            }
+          });
+        }
+
+        lashings.splice(idx, 1);
+        selectedLashing = null;
+      }
+
+      Sounds.playThud();
+      updateStabilityIndicator();
+      requestRender();
+    }
+
+    function deselectAllAndControls() {
+      // Temporarily clear materials highlights without resetting the list yet (to avoid loop conflicts)
+      selectedSpars.forEach(s => s.mesh.material = woodMaterials);
+      if (selectedLashing) {
+        selectedLashing.children.forEach(c => c.material = ropeMat);
+      }
+      transformControls.detach();
+    }
+
+    function undo() {
+      if (actionHistory.length === 0) return;
+      const step = actionHistory.pop();
+
+      clearSelection();
+
+      if (step.action === 'addSpar') {
+        const idx = spars.findIndex(s => s.id === step.spar.id);
+        if (idx !== -1) {
+          scene.remove(spars[idx].mesh);
+          spars.splice(idx, 1);
+          lashingGraph.delete(step.spar.id);
+        }
+      } else if (step.action === 'addLashing') {
+        breakLashingById(step.lashing.id);
+      } else if (step.action === 'deleteLashing') {
+        const sA = spars.find(x => x.id === step.lashing.sparAId);
+        const sB = spars.find(x => x.id === step.lashing.sparBId);
+        if (sA && sB) {
+          addLashing(sA, sB, step.lashing.point, step.lashing.angle, step.lashing.type, false, false);
+        }
+      } else if (step.action === 'deleteMultiSpars') {
+        // Recreate all spars
+        step.spars.forEach(s => {
+          const mesh = createSparMesh(s.type);
+          mesh.position.copy(s.position);
+          mesh.quaternion.copy(s.rotation);
+          mesh.userData.id = s.id;
+          scene.add(mesh);
+          
+          spars.push({ id: s.id, type: s.type, mesh: mesh, length: SPAR_TYPES[s.type].length, radius: SPAR_TYPES[s.type].radius });
+          lashingGraph.set(s.id, new Set());
+        });
+
+        // Recreate lashings
+        step.lashings.forEach(l => {
+          const sA = spars.find(x => x.id === l.sparAId);
+          const sB = spars.find(x => x.id === l.sparBId);
+          if (sA && sB) {
+            addLashing(sA, sB, l.point, l.angle, l.type, false, false);
+          }
+        });
+      }
+
+      Sounds.playClick();
+      updateStabilityIndicator();
+      requestRender();
+    }
+
+    // -------------------------------------------------------------
+    // PRE-BUILT SCOUTING TEMPLATES
+    // -------------------------------------------------------------
+    function buildTripodTemplate() {
+      clearSceneSilent();
+      Sounds.playClick();
+
+      // tripod meeting at top height Y = 2.7
+      const pTop = new THREE.Vector3(0, 2.7, 0);
+
+      // tripod feet coordinates on grass
+      const f1 = new THREE.Vector3(-0.7, 0.05, -0.4);
+      const f2 = new THREE.Vector3(0.7, 0.05, -0.4);
+      const f3 = new THREE.Vector3(0.0, 0.05, 0.8);
+
+      const s1 = addSparAlongSegment('medium', f1, pTop, false);
+      const s2 = addSparAlongSegment('medium', f2, pTop, false);
+      const s3 = addSparAlongSegment('medium', f3, pTop, false);
+
+      // Create a Tripod lashing linking them at top
+      addLashing(s1, s2, pTop, 20.0, 'tripod', false, false);
+      addLashing(s2, s3, pTop, 20.0, 'tripod', false, false);
+      
+      // Reposition camera
+      camera.position.set(0, 3.5, 6);
+      orbitControls.target.set(0, 1.3, 0);
+      
+      updateStabilityIndicator();
+      requestRender();
+    }
+
+    function buildAFrameTemplate() {
+      clearSceneSilent();
+      Sounds.playClick();
+
+      const pTop = new THREE.Vector3(0, 2.7, 0);
+      const f1 = new THREE.Vector3(-0.75, 0.05, 0);
+      const f2 = new THREE.Vector3(0.75, 0.05, 0);
+
+      // 2 diagonal leg spars
+      const legL = addSparAlongSegment('medium', f1, pTop, false);
+      const legR = addSparAlongSegment('medium', f2, pTop, false);
+
+      // Horizontal crossbar (stave 1m)
+      const pLeft = new THREE.Vector3(-0.4, 0.7, 0);
+      const pRight = new THREE.Vector3(0.4, 0.7, 0);
+      const cross = addSparAlongSegment('stave', pLeft, pRight, false);
+
+      // Add structural lashings
+      addLashing(legL, legR, pTop, 30.0, 'diagonal', false, false);
+      addLashing(legL, cross, pLeft, 75.0, 'square', false, false);
+      addLashing(legR, cross, pRight, 75.0, 'square', false, false);
+
+      camera.position.set(0, 3.0, 5.5);
+      orbitControls.target.set(0, 1.2, 0);
+
+      updateStabilityIndicator();
+      requestRender();
+    }
+
+    function buildPlatformTowerTemplate() {
+      clearSceneSilent();
+      Sounds.playClick();
+
+      // 4 vertical columns (3m) forming a square base
+      const r = 0.8;
+      const c1 = addSparAlongSegment('medium', new THREE.Vector3(-r, 0.05, -r), new THREE.Vector3(-r, 3.05, -r), false);
+      const c2 = addSparAlongSegment('medium', new THREE.Vector3(r, 0.05, -r), new THREE.Vector3(r, 3.05, -r), false);
+      const c3 = addSparAlongSegment('medium', new THREE.Vector3(r, 0.05, r), new THREE.Vector3(r, 3.05, r), false);
+      const c4 = addSparAlongSegment('medium', new THREE.Vector3(-r, 0.05, r), new THREE.Vector3(-r, 3.05, r), false);
+
+      // 4 horizontal platform frames (1m staves) near top (Y = 2.6)
+      const yt = 2.6;
+      const t12 = addSparAlongSegment('stave', new THREE.Vector3(-r, yt, -r), new THREE.Vector3(r, yt, -r), false);
+      const t23 = addSparAlongSegment('stave', new THREE.Vector3(r, yt, -r), new THREE.Vector3(r, yt, r), false);
+      const t34 = addSparAlongSegment('stave', new THREE.Vector3(r, yt, r), new THREE.Vector3(-r, yt, r), false);
+      const t41 = addSparAlongSegment('stave', new THREE.Vector3(-r, yt, r), new THREE.Vector3(-r, yt, -r), false);
+
+      // Connect columns to top frame bars using square lashings
+      addLashing(c1, t12, new THREE.Vector3(-r, yt, -r), 90, 'square', false, false);
+      addLashing(c2, t12, new THREE.Vector3(r, yt, -r), 90, 'square', false, false);
+      addLashing(c2, t23, new THREE.Vector3(r, yt, -r), 90, 'square', false, false);
+      addLashing(c3, t23, new THREE.Vector3(r, yt, r), 90, 'square', false, false);
+      addLashing(c3, t34, new THREE.Vector3(r, yt, r), 90, 'square', false, false);
+      addLashing(c4, t34, new THREE.Vector3(-r, yt, r), 90, 'square', false, false);
+      addLashing(c4, t41, new THREE.Vector3(-r, yt, r), 90, 'square', false, false);
+      addLashing(c1, t41, new THREE.Vector3(-r, yt, -r), 90, 'square', false, false);
+
+      camera.position.set(3, 4.5, 6);
+      orbitControls.target.set(0, 1.5, 0);
+
+      updateStabilityIndicator();
+      requestRender();
+    }
+
+    function clearSceneSilent() {
+      deselectAllAndControls();
+      spars.forEach(s => scene.remove(s.mesh));
+      lashings.forEach(l => scene.remove(l.mesh));
+      spars = [];
+      lashings = [];
+      lashingGraph.clear();
+      actionHistory = [];
+    }
+
+    function clearScene() {
+      if (confirm('هل أنت متأكد من مسح جميع عناصر المشهد؟')) {
+        clearSceneSilent();
+        Sounds.playCollapse();
+        updateStabilityIndicator();
+        requestRender();
+      }
+    }
+
+    // -------------------------------------------------------------
+    // STABILITY SIMULATOR & PHYSICS ANIMATOR
+    // -------------------------------------------------------------
+    let simulationActive = false;
+    let simulationStateSaved = null;
+    let tippingComponents = [];
+
+    function savePreSimState() {
+      return {
+        spars: spars.map(s => ({ id: s.id, position: s.mesh.position.clone(), rotation: s.mesh.quaternion.clone() })),
+        lashings: lashings.map(l => ({ id: l.id, position: l.mesh.position.clone(), rotation: l.mesh.quaternion.clone() }))
+      };
+    }
+
+    function restorePreSimState() {
+      if (!simulationStateSaved) return;
+
+      simulationStateSaved.spars.forEach(sState => {
+        const s = spars.find(x => x.id === sState.id);
+        if (s) {
+          s.mesh.position.copy(sState.position);
+          s.mesh.quaternion.copy(sState.rotation);
+          s.mesh.updateMatrixWorld(true);
+        }
+      });
+
+      simulationStateSaved.lashings.forEach(lState => {
+        const l = lashings.find(x => x.id === lState.id);
+        if (l) {
+          l.mesh.position.copy(lState.position);
+          l.mesh.quaternion.copy(lState.rotation);
+          l.mesh.updateMatrixWorld(true);
+        }
+      });
+
+      simulationStateSaved = null;
+      tippingComponents = [];
+    }
+
+    function runStabilitySimulation() {
+      if (simulationActive) return;
+      if (spars.length === 0) return;
+
+      clearSelection();
+      
+      simulationStateSaved = savePreSimState();
+      simulationActive = true;
+      
+      document.getElementById('sim-status-banner').classList.remove('hidden');
+      document.getElementById('btn-stability-test').classList.add('hidden');
+      
+      // Group structures
+      const visited = new Set();
+      const components = [];
+
+      spars.forEach(s => {
+        if (!visited.has(s.id)) {
+          const comp = getConnectedComponent(s.id);
+          comp.sparIds.forEach(id => visited.add(id));
+          components.push(comp);
+        }
+      });
+
+      tippingComponents = [];
+      let isEntirelyStable = true;
+
+      components.forEach(comp => {
+        const compMeshes = [];
+        comp.sparIds.forEach(id => {
+          const s = spars.find(x => x.id === id);
+          if (s) compMeshes.push(s.mesh);
+        });
+        
+        comp.lashingIds.forEach(id => {
+          const l = lashings.find(x => x.id === id);
+          if (l) compMeshes.push(l.mesh);
+        });
+
+        // Center of mass
+        const com = new THREE.Vector3();
+        let totalMass = 0;
+        comp.sparIds.forEach(id => {
+          const s = spars.find(x => x.id === id);
+          if (s) {
+            com.addScaledVector(s.mesh.position, s.mesh.userData.mass);
+            totalMass += s.mesh.userData.mass;
+          }
+        });
+        com.divideScalar(totalMass);
+
+        // Ground Contacts
+        const contacts = [];
+        comp.sparIds.forEach(id => {
+          const s = spars.find(x => x.id === id);
+          if (s) {
+            const halfL = s.length / 2;
+            const p1 = new THREE.Vector3(0, -halfL, 0).applyMatrix4(s.mesh.matrixWorld);
+            const p2 = new THREE.Vector3(0, halfL, 0).applyMatrix4(s.mesh.matrixWorld);
+            const epsilon = s.radius + 0.05;
+
+            if (p1.y <= epsilon) contacts.push({ point: p1.clone(), spar: s });
+            if (p2.y <= epsilon) contacts.push({ point: p2.clone(), spar: s });
+          }
+        });
+
+        if (contacts.length === 0) {
+          isEntirelyStable = false;
+          tippingComponents.push({
+            meshes: compMeshes,
+            type: 'fall',
+            velocity: new THREE.Vector3(0, 0, 0)
+          });
+        } else if (contacts.length === 1) {
+          isEntirelyStable = false;
+          const pivot = contacts[0].point.clone();
+          const toCom = new THREE.Vector3(com.x - pivot.x, 0, com.z - pivot.z);
+          let tipDir = toCom.lengthSq() < 0.001 ? new THREE.Vector3(1, 0, 0) : toCom.normalize();
+          const axis = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), tipDir).normalize();
+          
+          tippingComponents.push({
+            meshes: compMeshes,
+            type: 'pivot1',
+            pivot: pivot,
+            axis: axis,
+            angleRotated: 0,
+            speed: 0.02
+          });
+        } else if (contacts.length === 2) {
+          isEntirelyStable = false;
+          const pA = contacts[0].point.clone();
+          const pB = contacts[1].point.clone();
+          
+          const hingeAxis = new THREE.Vector3().subVectors(pB, pA).normalize();
+          const lineVec = new THREE.Vector3().subVectors(com, pA);
+          const projLen = lineVec.dot(hingeAxis);
+          const projPt = new THREE.Vector3().addScaledVector(hingeAxis, projLen).add(pA);
+          const toComDir = new THREE.Vector3().subVectors(com, projPt);
+          const tipDir = new THREE.Vector3(toComDir.x, 0, toComDir.z).normalize();
+          
+          tippingComponents.push({
+            meshes: compMeshes,
+            type: 'pivot2',
+            pivot: projPt,
+            axis: hingeAxis,
+            angleRotated: 0,
+            speed: 0.025,
+            tipDir: tipDir
+          });
+        } else {
+          // 3 or more contacts - projected CoM vs contact hull check
+          const comGround = new THREE.Vector2(com.x, com.z);
+          const poly = contacts.map(c => new THREE.Vector2(c.point.x, c.point.z));
+          const isStable = isPointInPolygon(comGround, poly);
+
+          if (!isStable) {
+            isEntirelyStable = false;
+            const edge = findClosestHullEdge(comGround, poly);
+            const pivotPoint = new THREE.Vector3(edge.pA.x, 0, edge.pA.y);
+            const edgeVec = new THREE.Vector3(edge.pB.x - edge.pA.x, 0, edge.pB.y - edge.pA.y).normalize();
+            
+            tippingComponents.push({
+              meshes: compMeshes,
+              type: 'pivot2',
+              pivot: pivotPoint,
+              axis: edgeVec,
+              angleRotated: 0,
+              speed: 0.02,
+              tipDir: new THREE.Vector3(edge.normal.x, 0, edge.normal.y)
+            });
+          }
+        }
+      });
+
+      if (isEntirelyStable) {
+        spawnConfetti();
+        Sounds.playLash();
+        document.getElementById('txt-stability-state').innerText = "الهيكل مستقر تماماً! 🏆🎉";
+        document.getElementById('txt-stability-state').className = "text-xs font-extrabold text-emerald-400 block mt-0.5 animate-pulse";
+      } else {
+        Sounds.playCollapse();
+        document.getElementById('txt-stability-state').innerText = "انهيار! الهيكل غير متزن ❌";
+        document.getElementById('txt-stability-state').className = "text-xs font-extrabold text-red-400 block mt-0.5 animate-pulse";
+      }
+      requestRender();
+    }
+
+    function stopStabilitySimulation() {
+      if (!simulationActive) return;
+      simulationActive = false;
+      
+      restorePreSimState();
+      
+      document.getElementById('sim-status-banner').classList.add('hidden');
+      document.getElementById('btn-stability-test').classList.remove('hidden');
+      
+      document.getElementById('txt-stability-state').innerText = "جاهز للفحص ✅";
+      document.getElementById('txt-stability-state').className = "text-xs font-semibold text-emerald-400 block mt-0.5";
+      requestRender();
+    }
+
+    function isPointInPolygon(pt, poly) {
+      let inside = false;
+      for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        const xi = poly[i].x, yi = poly[i].y;
+        const xj = poly[j].x, yj = poly[j].y;
+        
+        const intersect = ((yi > pt.y) !== (yj > pt.y))
+            && (pt.x < (xj - xi) * (pt.y - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+      }
+      return inside;
+    }
+
+    function findClosestHullEdge(pt, poly) {
+      let minDist = Infinity;
+      let closestEdge = null;
+
+      for (let i = 0; i < poly.length; i++) {
+        const pA = poly[i];
+        const pB = poly[(i + 1) % poly.length];
+        
+        const edge = new THREE.Vector2().subVectors(pB, pA);
+        const edgeLen = edge.length();
+        if (edgeLen < 0.001) continue;
+        
+        const normal = new THREE.Vector2(-edge.y, edge.x).normalize();
+        const toPt = new THREE.Vector2().subVectors(pt, pA);
+        const dist = Math.abs(toPt.dot(normal));
+        
+        if (dist < minDist) {
+          minDist = dist;
+          closestEdge = { pA, pB, normal };
+        }
+      }
+      return closestEdge;
+    }
+
+    function rotateComponentAroundPivot(meshes, pivot, axis, angle) {
+      const q = new THREE.Quaternion().setFromAxisAngle(axis, angle);
+      meshes.forEach(m => {
+        m.position.sub(pivot);
+        m.position.applyQuaternion(q);
+        m.position.add(pivot);
+        
+        m.quaternion.premultiply(q);
+        m.updateMatrixWorld(true);
+      });
+    }
+
+    function runPhysicsStep(dt) {
+      tippingComponents.forEach(comp => {
+        if (comp.type === 'fall') {
+          comp.velocity.y += -9.8 * dt;
+          comp.meshes.forEach(m => {
+            m.position.addScaledVector(comp.velocity, dt);
+            m.updateMatrixWorld(true);
+          });
+          
+          let deepestY = Infinity;
+          comp.meshes.forEach(m => {
+            if (m.name === "spar") {
+              const halfL = m.userData.length / 2;
+              const p1 = new THREE.Vector3(0, -halfL, 0).applyMatrix4(m.matrixWorld);
+              const p2 = new THREE.Vector3(0, halfL, 0).applyMatrix4(m.matrixWorld);
+              deepestY = Math.min(deepestY, p1.y - m.userData.radius, p2.y - m.userData.radius);
+            }
+          });
+
+          if (deepestY <= 0) {
+            comp.type = 'stopped';
+            comp.velocity.set(0, 0, 0);
+            comp.meshes.forEach(m => {
+              m.position.y += -deepestY;
+              m.updateMatrixWorld(true);
+            });
+            Sounds.playThud();
+          }
+        } else if (comp.type === 'pivot1' || comp.type === 'pivot2') {
+          comp.speed += 9.8 * dt * 0.05;
+          const rotStep = comp.speed * dt;
+          comp.angleRotated += rotStep;
+
+          rotateComponentAroundPivot(comp.meshes, comp.pivot, comp.axis, rotStep);
+          
+          let otherPointHit = false;
+          comp.meshes.forEach(m => {
+            if (m.name === "spar") {
+              const halfL = m.userData.length / 2;
+              const p1 = new THREE.Vector3(0, -halfL, 0).applyMatrix4(m.matrixWorld);
+              const p2 = new THREE.Vector3(0, halfL, 0).applyMatrix4(m.matrixWorld);
+              
+              if (p1.y < m.userData.radius - 0.01 && p1.distanceTo(comp.pivot) > 0.1) otherPointHit = true;
+              if (p2.y < m.userData.radius - 0.01 && p2.distanceTo(comp.pivot) > 0.1) otherPointHit = true;
+            }
+          });
+
+          if (otherPointHit || comp.angleRotated > Math.PI / 2) {
+            comp.type = 'stopped';
+            Sounds.playThud();
+          }
+        }
+      });
+    }
+
+    function updateStabilityIndicator() {
+      if (spars.length === 0) {
+        document.getElementById('txt-stability-state').innerText = "جاهز للفحص ✅";
+        document.getElementById('txt-stability-state').className = "text-xs font-semibold text-emerald-400 block mt-0.5";
+        return;
+      }
+
+      let groundContacts = 0;
+      spars.forEach(s => {
+        const halfL = s.length / 2;
+        const p1 = new THREE.Vector3(0, -halfL, 0).applyMatrix4(s.mesh.matrixWorld);
+        const p2 = new THREE.Vector3(0, halfL, 0).applyMatrix4(s.mesh.matrixWorld);
+        const epsilon = s.radius + 0.05;
+        if (p1.y <= epsilon || p2.y <= epsilon) groundContacts++;
+      });
+
+      const indicator = document.getElementById('txt-stability-state');
+      if (groundContacts === 0) {
+        indicator.innerText = "غير مستقر (معلق بالهواء) ⚠️";
+        indicator.className = "text-xs font-semibold text-red-400 block mt-0.5";
+      } else if (lashings.length === 0 && spars.length > 1) {
+        indicator.innerText = "غير مستقر (بدون حبال) ⚠️";
+        indicator.className = "text-xs font-semibold text-yellow-400 block mt-0.5";
+      } else {
+        indicator.innerText = "جاهز للفحص ✅";
+        indicator.className = "text-xs font-semibold text-emerald-400 block mt-0.5";
+      }
+    }
+
+    // -------------------------------------------------------------
+    // CONFETTI SYSTEM
+    // -------------------------------------------------------------
+    const confettiParticles = [];
+    const confettiColors = ['#f59e0b', '#10b981', '#3b82f6', '#ec4899', '#8b5cf6', '#14b8a6'];
+
+    function spawnConfetti() {
+      const particleGeo = new THREE.PlaneGeometry(0.08, 0.08);
+      for (let i = 0; i < 60; i++) {
+        const mat = new THREE.MeshBasicMaterial({ color: confettiColors[Math.floor(Math.random() * confettiColors.length)], side: THREE.DoubleSide });
+        const mesh = new THREE.Mesh(particleGeo, mat);
+        mesh.position.set((Math.random() - 0.5) * 6, 6 + Math.random() * 4, (Math.random() - 0.5) * 6);
+        mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+        scene.add(mesh);
+        
+        confettiParticles.push({
+          mesh: mesh,
+          velocity: new THREE.Vector3((Math.random() - 0.5) * 2, -2 - Math.random() * 2, (Math.random() - 0.5) * 2),
+          rotSpeed: new THREE.Vector3(Math.random() * 5, Math.random() * 5, Math.random() * 5),
+          life: 2.5
+        });
+      }
+    }
+
+    function updateConfetti(dt) {
+      for (let i = confettiParticles.length - 1; i >= 0; i--) {
+        const p = confettiParticles[i];
+        p.life -= dt;
+
+        if (p.life <= 0) {
+          scene.remove(p.mesh);
+          confettiParticles.splice(i, 1);
+          continue;
+        }
+
+        p.mesh.position.addScaledVector(p.velocity, dt);
+        p.mesh.rotation.x += p.rotSpeed.x * dt;
+        p.mesh.rotation.y += p.rotSpeed.y * dt;
+        p.mesh.rotation.z += p.rotSpeed.z * dt;
+
+        if (p.mesh.position.y <= 0.05) {
+          p.mesh.position.y = 0.05;
+          p.velocity.set(0, 0, 0);
+        }
+      }
+    }
+
+    // -------------------------------------------------------------
+    // INTERACTION AND INTERFACE EVENT LISTENERS
+    // -------------------------------------------------------------
+    
+    // Sidebar Tabs toggles
+    const tabInventory = document.getElementById('tab-inventory');
+    const tabTemplates = document.getElementById('tab-templates');
+    const contentInventory = document.getElementById('content-inventory');
+    const contentTemplates = document.getElementById('content-templates');
+
+    tabInventory.addEventListener('click', () => {
+      Sounds.playClick();
+      tabInventory.className = "flex-1 pb-2 border-b-2 border-forest-500 font-bold text-white text-center";
+      tabTemplates.className = "flex-1 pb-2 border-b-2 border-transparent font-bold text-slate-400 hover:text-white text-center";
+      contentInventory.classList.remove('hidden');
+      contentTemplates.classList.add('hidden');
+    });
+
+    tabTemplates.addEventListener('click', () => {
+      Sounds.playClick();
+      tabTemplates.className = "flex-1 pb-2 border-b-2 border-forest-500 font-bold text-white text-center";
+      tabInventory.className = "flex-1 pb-2 border-b-2 border-transparent font-bold text-slate-400 hover:text-white text-center";
+      contentTemplates.classList.remove('hidden');
+      contentInventory.classList.add('hidden');
+    });
+
+    // Spawn from Templates triggers
+    document.getElementById('btn-tmpl-tripod').addEventListener('click', buildTripodTemplate);
+    document.getElementById('btn-tmpl-aframe').addEventListener('click', buildAFrameTemplate);
+    document.getElementById('btn-tmpl-tower').addEventListener('click', buildPlatformTowerTemplate);
+
+    // Multi-select toggle button behavior
+    const btnMultiSelect = document.getElementById('btn-multiselect');
+    btnMultiSelect.addEventListener('click', () => {
+      Sounds.playClick();
+      multiSelectActive = !multiSelectActive;
+      if (multiSelectActive) {
+        btnMultiSelect.className = "p-2.5 text-sky-400 bg-sky-950/40 border border-sky-900/50 rounded-xl hover:bg-sky-900/30 transition-colors flex items-center justify-center gap-1.5 text-sm";
+      } else {
+        btnMultiSelect.className = "p-2.5 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors flex items-center justify-center gap-1.5 text-sm";
+        clearSelection();
+      }
+    });
+
+    // Translate mode click
+    document.getElementById('btn-translate').addEventListener('click', () => {
+      Sounds.playClick();
+      transformControls.setMode('translate');
+      document.getElementById('btn-translate').className = "p-2.5 bg-forest-600 text-white rounded-xl hover:bg-forest-500 transition-colors shadow-inner flex items-center justify-center gap-1.5 text-sm";
+      document.getElementById('btn-rotate').className = "p-2.5 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors flex items-center justify-center gap-1.5 text-sm";
+    });
+
+    // Rotate mode click
+    document.getElementById('btn-rotate').addEventListener('click', () => {
+      Sounds.playClick();
+      transformControls.setMode('rotate');
+      document.getElementById('btn-rotate').className = "p-2.5 bg-forest-600 text-white rounded-xl hover:bg-forest-500 transition-colors shadow-inner flex items-center justify-center gap-1.5 text-sm";
+      document.getElementById('btn-translate').className = "p-2.5 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors flex items-center justify-center gap-1.5 text-sm";
+    });
+
+    // Toggle Rigid Lock
+    document.getElementById('btn-lock').addEventListener('click', () => {
+      lashingLocked = !lashingLocked;
+      Sounds.playClick();
+      const btn = document.getElementById('btn-lock');
+      
+      if (lashingLocked) {
+        btn.className = "p-2.5 text-emerald-400 bg-emerald-950/40 border border-emerald-900/50 rounded-xl hover:bg-emerald-900/30 transition-colors flex items-center justify-center gap-1.5 text-sm";
+        btn.querySelector('span').innerText = "ترابط صلب";
+        document.getElementById('lock-icon').innerHTML = '<path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"></path>';
+      } else {
+        btn.className = "p-2.5 text-yellow-400 bg-yellow-950/40 border border-yellow-900/50 rounded-xl hover:bg-yellow-900/30 transition-colors flex items-center justify-center gap-1.5 text-sm";
+        btn.querySelector('span').innerText = "تعديل منفرد";
+        document.getElementById('lock-icon').innerHTML = '<path fill-rule="evenodd" d="M10 2a5 5 0 00-5 5v2a2 2 0 00-2 2v5a2 2 0 002 2h10a2 2 0 002-2v-5a2 2 0 00-2-2H9V7a1 1 0 012 0v2.75a.75.75 0 001.5 0V7a5 5 0 00-5-5z" clip-rule="evenodd"></path>';
+      }
+      requestRender();
+    });
+
+    // Undo action
+    document.getElementById('btn-undo').addEventListener('click', undo);
+
+    // Delete selected
+    document.getElementById('btn-delete').addEventListener('click', () => deleteSelected());
+
+    // Clear entire scene
+    document.getElementById('btn-clear').addEventListener('click', clearScene);
+
+    // Toggle Audio
+    document.getElementById('btn-sound').addEventListener('click', () => {
+      soundEnabled = !soundEnabled;
+      const icon = document.getElementById('sound-icon');
+      if (soundEnabled) {
+        icon.innerHTML = '<path d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M12 18.75V5.25L7.75 9H4.5A1.5 1.5 0 003 10.5v3A1.5 1.5 0 004.5 15h3.25L12 18.75z"></path>';
+        Sounds.playClick();
+      } else {
+        icon.innerHTML = '<path d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636M12 18.75V5.25L7.75 9H4.5A1.5 1.5 0 003 10.5v3A1.5 1.5 0 004.5 15h3.25L12 18.75z"></path>';
+      }
+    });
+
+    // Help Modal events
+    document.getElementById('btn-help').addEventListener('click', () => {
+      Sounds.playClick();
+      document.getElementById('helpModal').classList.remove('hidden');
+    });
+
+    document.getElementById('btn-close-help').addEventListener('click', () => {
+      Sounds.playClick();
+      document.getElementById('helpModal').classList.add('hidden');
+    });
+
+    document.getElementById('btn-start-playing').addEventListener('click', () => {
+      Sounds.playClick();
+      document.getElementById('helpModal').classList.add('hidden');
+    });
+
+    // Create Lashing Button
+    document.getElementById('btn-create-lash').addEventListener('click', () => {
+      if (currentProximityCandidate) {
+        addLashing(
+          currentProximityCandidate.sparA,
+          currentProximityCandidate.sparB,
+          currentProximityCandidate.point,
+          currentProximityCandidate.angle,
+          currentProximityCandidate.type,
+          true,
+          true // Snapping enabled
+        );
+      }
+    });
+
+    // Click-to-spawn buttons in sidebar
+    document.querySelectorAll('.btn-spawn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const type = btn.getAttribute('data-type');
+        addSpar(type);
+      });
+    });
+
+    // Double-click on proximity ring to trigger lashing creation
+    renderer.domElement.addEventListener('dblclick', (e) => {
+      if (proximityActive && currentProximityCandidate) {
+        addLashing(
+          currentProximityCandidate.sparA,
+          currentProximityCandidate.sparB,
+          currentProximityCandidate.point,
+          currentProximityCandidate.angle,
+          currentProximityCandidate.type,
+          true,
+          true // Snapping enabled
+        );
+      }
+    });
+
+    // Drag-and-drop actions
+    document.querySelectorAll('.inventory-card').forEach(card => {
+      card.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('text/plain', card.getAttribute('data-type'));
+      });
+    });
+
+    renderer.domElement.addEventListener('dragover', (e) => e.preventDefault());
+
+    renderer.domElement.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const type = e.dataTransfer.getData('text/plain');
+      if (type && SPAR_TYPES[type]) {
+        mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+        
+        raycaster.setFromCamera(mouse, camera);
+        const intersect = raycaster.intersectObject(ground);
+        
+        if (intersect.length > 0) {
+          const pt = intersect[0].point;
+          pt.y = SPAR_TYPES[type].length / 2;
+          addSpar(type, pt);
+        } else {
+          addSpar(type);
+        }
+      }
+    });
+
+    // Coexistence of Orbit and Transform controls
+    transformControls.addEventListener('dragging-changed', (event) => {
+      orbitControls.enabled = !event.value;
+    });
+
+    transformControls.addEventListener('mouseDown', () => {
+      setupDragSync();
+    });
+
+    transformControls.addEventListener('mouseUp', () => {
+      clearDragSync();
+      updateStabilityIndicator();
+      requestRender();
+    });
+
+    transformControls.addEventListener('objectChange', () => {
+      // Synchronize followers
+      updateDragSync();
+
+      // Check intersections during movement
+      checkProximity();
+
+      // Recalculate and slide lashings on the fly if unlocked
+      updateLashingsDynamic();
+
+      requestRender();
+    });
+
+    // Mouse pointer down selector
+    renderer.domElement.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return; // Only left click
+
+      mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, camera);
+
+      const interactables = [];
+      spars.forEach(s => interactables.push(s.mesh));
+      lashings.forEach(l => interactables.push(l.mesh));
+
+      const intersects = raycaster.intersectObjects(interactables, true);
+
+      if (intersects.length > 0) {
+        let target = intersects[0].object;
+        while (target.parent && target.name !== "spar" && target.name !== "lashing") {
+          target = target.parent;
+        }
+
+        if (target.name === "spar") {
+          const sparObj = spars.find(s => s.mesh === target);
+          if (sparObj) {
+            // Check multi selection modifier (Shift or toggle button)
+            const isMulti = e.shiftKey || multiSelectActive;
+            toggleSparSelection(sparObj, isMulti);
+          }
+        } else if (target.name === "lashing") {
+          selectLashing(target);
+        }
+      }
+    });
+
+    // Right-click anywhere to clear selections
+    renderer.domElement.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      clearSelection();
+    });
+
+    // Keyboard Hotkeys
+    window.addEventListener('keydown', (e) => {
+      if (e.key.toLowerCase() === 'w') {
+        document.getElementById('btn-translate').click();
+      }
+      if (e.key.toLowerCase() === 'e') {
+        document.getElementById('btn-rotate').click();
+      }
+      if (e.key === 'Delete') {
+        deleteSelected();
+      }
+      if (e.key.toLowerCase() === 'z' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        undo();
+      }
+    });
+
+    // Stability controls triggers
+    document.getElementById('btn-stability-test').addEventListener('click', () => {
+      Sounds.playClick();
+      runStabilitySimulation();
+    });
+
+    document.getElementById('btn-reset-sim').addEventListener('click', () => {
+      Sounds.playClick();
+      stopStabilitySimulation();
+    });
+
+    // Window resizing handler
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      requestRender();
+    });
+
+    // Initial first-time manual frame request
+    requestRender();
+
+    // Trigger help screen modal on startup
+    document.getElementById('helpModal').classList.remove('hidden');
+
+  </script>
+</body>
+</html>

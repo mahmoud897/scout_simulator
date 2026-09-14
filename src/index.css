@@ -1,0 +1,510 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ═══════════════════════════════════════════════
+   Scout Studio Theme Variables (Modern Tactical Nature)
+   ═══════════════════════════════════════════════ */
+:root {
+  --panel-bg: rgba(24, 33, 46, 0.94);
+  --panel-surface: rgba(19, 25, 35, 0.96);
+  --header-bg: rgba(21, 29, 41, 0.96);
+  --editor-bg: #0c1017;
+  --input-bg: #0e141f;
+  --border-color: rgba(255, 255, 255, 0.09);
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --divider-color: rgba(255, 255, 255, 0.07);
+  --hover-bg: rgba(255, 255, 255, 0.07);
+  --accent: #e08a1e;
+  --accent-hover: #f59e0b;
+  --accent-active: #b45309;
+  --emerald: #10b981;
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --radius: 8px;
+  --header-h: 46px;
+  --statusbar-h: 28px;
+}
+
+/* ═══════════════════════════════════════════════
+   Scrollbar - Sleek & Modern
+   ═══════════════════════════════════════════════ */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(224, 138, 30, 0.4);
+}
+
+/* ═══════════════════════════════════════════════
+   Panel System (Glassmorphic & Studio Grade)
+   ═══════════════════════════════════════════════ */
+.dcc-panel {
+  background: var(--panel-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-color);
+}
+
+.dcc-header {
+  background: var(--header-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.dcc-input {
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-size: 12px;
+  padding: 5px 8px;
+  transition: all 0.15s ease;
+}
+
+.dcc-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(224, 138, 30, 0.25);
+}
+
+.dcc-input:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Studio Button Styles */
+.dcc-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.dcc-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+.dcc-btn:active {
+  transform: scale(0.98);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.dcc-btn.active {
+  background: linear-gradient(135deg, #e08a1e, #b45309);
+  border-color: #f59e0b;
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(224, 138, 30, 0.3);
+}
+
+.dcc-btn-primary {
+  background: linear-gradient(135deg, #e08a1e, #b45309);
+  border: 1px solid #f59e0b;
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 2px 10px rgba(224, 138, 30, 0.3);
+}
+
+.dcc-btn-primary:hover {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  box-shadow: 0 4px 14px rgba(224, 138, 30, 0.4);
+}
+
+.dcc-btn-icon {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  color: var(--text-secondary);
+  padding: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dcc-btn-icon:hover {
+  background: var(--hover-bg);
+  color: var(--text-primary);
+  border-color: var(--border-subtle);
+}
+
+.dcc-btn-icon.active {
+  background: rgba(224, 138, 30, 0.2);
+  border-color: rgba(224, 138, 30, 0.4);
+  color: #fbbf24;
+}
+
+/* Dividers */
+.dcc-divider-v {
+  width: 1px;
+  background: var(--divider-color);
+  align-self: stretch;
+  margin: 4px 6px;
+}
+
+.dcc-divider-h {
+  height: 1px;
+  background: var(--divider-color);
+  width: 100%;
+  margin: 6px 0;
+}
+
+/* Collapsible Section Header */
+.dcc-section-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--radius);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+.dcc-section-header:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.dcc-section-header svg.chevron {
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.dcc-section-header.collapsed svg.chevron {
+  transform: rotate(-90deg);
+}
+
+/* Section Content */
+.dcc-section-body {
+  padding: 8px 10px;
+}
+
+/* Property Row */
+.dcc-prop-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 12px;
+}
+
+.dcc-prop-label {
+  color: var(--text-muted);
+  min-width: 65px;
+  flex-shrink: 0;
+  text-align: right;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.dcc-prop-value {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Numeric Input Field (XYZ-style) with guaranteed LTR */
+.dcc-num-input {
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  font-size: 11px;
+  padding: 4px 6px;
+  width: 100%;
+  text-align: center;
+  direction: ltr !important;
+  unicode-bidi: isolate !important;
+  transition: border-color 0.15s;
+}
+
+.dcc-num-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(224, 138, 30, 0.2);
+}
+
+.dcc-num-input.axis-x { border-right: 2px solid #ef4444; border-left: none; }
+.dcc-num-input.axis-y { border-right: 2px solid #10b981; border-left: none; }
+.dcc-num-input.axis-z { border-right: 2px solid #38bdf8; border-left: none; }
+
+/* Tool Shelf Item */
+.tool-shelf-btn {
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1px solid transparent;
+  position: relative;
+}
+
+.tool-shelf-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.tool-shelf-btn.active {
+  background: rgba(224, 138, 30, 0.2);
+  border-color: #f59e0b;
+  color: #fbbf24;
+  box-shadow: 0 0 12px rgba(224, 138, 30, 0.3);
+}
+
+/* Tooltip Styling */
+.dcc-tooltip {
+  position: relative;
+}
+
+.dcc-tooltip::after {
+  content: attr(data-tip);
+  position: absolute;
+  right: auto;
+  left: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%) scale(0.95);
+  background: #0f172a;
+  color: #f8fafc;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  z-index: 1000;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+  font-weight: 600;
+  font-family: 'Cairo', sans-serif;
+}
+
+.dcc-tooltip:hover::after {
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
+}
+
+.dcc-tooltip-bottom::after {
+  left: 50%;
+  right: auto;
+  top: calc(100% + 8px);
+  transform: translateX(-50%) scale(0.95);
+}
+
+.dcc-tooltip-bottom:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+
+/* Outliner tree item */
+.outliner-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.1s ease;
+  border: 1px solid transparent;
+}
+
+.outliner-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.outliner-item.selected {
+  background: rgba(224, 138, 30, 0.18);
+  color: #fff;
+  border-color: rgba(224, 138, 30, 0.4);
+}
+
+/* Color dot indicator */
+.color-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+/* Range slider modern style */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  background: #0e141f;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9999px;
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #e08a1e;
+  border: 2px solid #ffffff;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  transition: transform 0.1s;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+  background: #f59e0b;
+}
+
+/* Checkbox modern style */
+input[type="checkbox"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  background: #0e141f;
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.15s ease;
+}
+
+input[type="checkbox"]:checked {
+  background: #e08a1e;
+  border-color: #f59e0b;
+}
+
+input[type="checkbox"]:checked::after {
+  content: '✓';
+  position: absolute;
+  top: -1px;
+  left: 2px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+/* Animation utilities */
+@keyframes slideUp {
+  from { transform: translateY(12px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.slide-up {
+  animation: slideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body {
+  font-family: 'Cairo', 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ═══════════════════════════════════════════════
+   Scout Land Report & A4 PDF Print Styles
+   ═══════════════════════════════════════════════ */
+.report-page-a4 {
+  direction: rtl !important;
+  text-align: right !important;
+  font-family: 'Cairo', 'Tajawal', system-ui, -apple-system, sans-serif !important;
+  letter-spacing: normal !important;
+  width: 210mm;
+  min-height: 297mm;
+  max-height: 297mm;
+  box-sizing: border-box;
+  page-break-after: always;
+  break-after: page;
+  margin: 0 auto;
+}
+
+.report-page-a4 *,
+.report-page-a4 h1,
+.report-page-a4 h2,
+.report-page-a4 h3,
+.report-page-a4 h4,
+.report-page-a4 span,
+.report-page-a4 p,
+.report-page-a4 div,
+.report-page-a4 td,
+.report-page-a4 th {
+  letter-spacing: normal !important;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .camp-report-export-root {
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    gap: 0 !important;
+  }
+
+  .report-page-a4 {
+    box-shadow: none !important;
+    border: none !important;
+    width: 210mm !important;
+    height: 297mm !important;
+    min-height: 297mm !important;
+    max-height: 297mm !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    overflow: hidden !important;
+  }
+}
+
